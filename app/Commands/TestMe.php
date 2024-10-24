@@ -20,6 +20,7 @@ class TestMe extends Command
 //        $this->info(env('NTRN_DEV_ENV', 'NOPE2'));
 //        dump(Env::getRepository());
 //        $this->info('command end');
-        $this->line('sadasds');
+//        $this->line('sadasds');
+        $this->info(env('APP_KEY', 'NOPE'));
     }
 }

@@ -5,7 +5,7 @@ return [
     'paths' => [app_path('Commands')],
     'add' => [
         Illuminate\Foundation\Console\KeyGenerateCommand::class,
-        Illuminate\Foundation\Console\VendorPublishCommand::class,
+//        Illuminate\Foundation\Console\VendorPublishCommand::class,
     ],
     'hidden' => [
 //        NunoMaduro\LaravelConsoleSummary\SummaryCommand::class,
@@ -18,7 +18,6 @@ return [
 //        LaravelZero\Framework\Commands\StubPublishCommand::class,
     ],
     'remove' => [
-//        Illuminate\Foundation\Console\ConsoleMakeCommand::class,
         LaravelZero\Framework\Commands\MakeCommand::class,
     ],
 ];

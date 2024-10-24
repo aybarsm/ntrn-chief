@@ -6,8 +6,6 @@
 
 #Custom - App
 .env
-/dev/database.sqlite
-stubs/
 
 #Custom - Default
 .DS_Store

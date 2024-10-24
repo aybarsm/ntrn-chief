@@ -1,7 +1,6 @@
 <?php
 
 use LaravelZero\Framework\Application;
-//use App\Framework\Application;
 
 $app = Application::configure(basePath: dirname(__DIR__))->create();
 

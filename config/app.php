@@ -8,4 +8,5 @@ return [
     'providers' => [
         App\Providers\AppServiceProvider::class,
     ],
+    'key' => env('APP_KEY'),
 ];
