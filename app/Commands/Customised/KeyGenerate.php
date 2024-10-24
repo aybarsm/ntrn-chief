@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Commands\Customised;
 
-use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Console\KeyGenerateCommand;
 
 class KeyGenerate extends KeyGenerateCommand
@@ -23,7 +24,7 @@ class KeyGenerate extends KeyGenerateCommand
         }
 
         if (! blank($this->laravel['config']['app.key']) && ! $this->option('replace')) {
-            $this->error('Application key is already set. Use the --replace option to force the operation.');
+            $this->error('Application key is already set. Use the (-r|--replace) option to force the operation.');
             return;
         }
 

@@ -21,6 +21,7 @@ class TestMe extends Command
 //        dump(Env::getRepository());
 //        $this->info('command end');
 //        $this->line('sadasds');
-        $this->info(env('APP_KEY', 'NOPE'));
+//        $this->info(env('APP_KEY', 'NOPE'));
+        $this->info('Version: '. config('app.version'));
     }
 }
