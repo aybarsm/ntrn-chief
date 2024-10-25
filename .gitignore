@@ -28,8 +28,7 @@ Temporary Items
 #Custom - Development
 config/app_version
 .box_dump/
-builds/
-!builds/utils
+!builds/
 dev/
 *.bak*
 *.bak*/
