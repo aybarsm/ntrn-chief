@@ -45,34 +45,32 @@ class GitHub
         return static::handleMatches($matches);
     }
 
-    public static function tagLatest(string $input): string
+    public static function apiGet(string $url): \Illuminate\Http\Client\Response
     {
-        $input = static::isValidRepo(static::resolveRepository($input), true);
-
-        $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/tags";
-        dump($url);
-        $response = Http::withHeaders([
+        return Http::withHeaders([
             'Accept' => 'application/vnd.github+json',
         ])->get($url);
-        dump($response->json());
-        return '';
-//
-//        return $response->json('tag_name');
+    }
+
+    public static function getTags(string $input): \Illuminate\Http\Client\Response
+    {
+        $input = static::isValidRepo(static::resolveRepository($input), true);
+        $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/tags";
+
+        return static::apiGet($url);
+    }
+
+    public static function tagLatest(string $input): string
+    {
+        return static::getTags($input)->json('0.name');
     }
 
     public static function releaseLatest(string $input): string
     {
         $input = static::isValidRepo(static::resolveRepository($input), true);
-
         $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/releases/latest";
-        dump($url);
-        $response = Http::withHeaders([
-            'Accept' => 'application/vnd.github+json',
-        ])->get($url);
-        dump($response->json());
-        return '';
-//
-//        return $response->json('tag_name');
+
+        return static::apiGet($url)->json('tag_name');
     }
 
 }

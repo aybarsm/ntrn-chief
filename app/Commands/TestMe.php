@@ -41,7 +41,7 @@ class TestMe extends Command
         $url = 'https://github.com/aybarsm/ntrn-chief/issues';
         $input = trim($input);
 //        dump(Str::isMatch('/^(?<org>[^\/]+)\/(?<repo>[^\/]+)$/', $input));
-        dump(GitHub::releaseLatest($url));
+        dump(GitHub::tagLatest($url));
 //        dump(GitHub::resolveRepositoryFromUrl($url));
 //        $this->config()->set('composer', File::json(base_path('composer.json')));
 //        $this->config('set', 'composer', File::json(base_path('composer.json')));
