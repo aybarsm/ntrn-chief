@@ -8,7 +8,7 @@ trait Configurable
 {
     private static object $_configInstance;
 
-    private function config(): object
+    private function config(string $method = '', ...$parameters)
     {
         if (! isset(self::$_configInstance)) {
             self::$_configInstance = new class
@@ -41,6 +41,6 @@ trait Configurable
             };
         }
 
-        return self::$_configInstance;
+        return blank($method) ? self::$_configInstance : self::$_configInstance->{$method}(...$parameters);
     }
 }

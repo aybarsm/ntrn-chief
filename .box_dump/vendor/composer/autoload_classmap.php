@@ -11,6 +11,7 @@ return array(
     'App\\Commands\\Customised\\MakeCommand' => $baseDir . '/app/Commands/Customised/MakeCommand.php',
     'App\\Commands\\TestMe' => $baseDir . '/app/Commands/TestMe.php',
     'App\\Providers\\AppServiceProvider' => $baseDir . '/app/Providers/AppServiceProvider.php',
+    'App\\Traits\\Configurable' => $baseDir . '/app/Traits/Configurable.php',
     'Assert\\Assert' => $vendorDir . '/beberlei/assert/lib/Assert/Assert.php',
     'Assert\\Assertion' => $vendorDir . '/beberlei/assert/lib/Assert/Assertion.php',
     'Assert\\AssertionChain' => $vendorDir . '/beberlei/assert/lib/Assert/AssertionChain.php',

@@ -545,6 +545,7 @@ class ComposerStaticInit84994e1c91e70f8198df4ea49711b288
         'App\\Commands\\Customised\\MakeCommand' => __DIR__ . '/../..' . '/app/Commands/Customised/MakeCommand.php',
         'App\\Commands\\TestMe' => __DIR__ . '/../..' . '/app/Commands/TestMe.php',
         'App\\Providers\\AppServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AppServiceProvider.php',
+        'App\\Traits\\Configurable' => __DIR__ . '/../..' . '/app/Traits/Configurable.php',
         'Assert\\Assert' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/Assert.php',
         'Assert\\Assertion' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/Assertion.php',
         'Assert\\AssertionChain' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/AssertionChain.php',

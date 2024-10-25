@@ -2,10 +2,13 @@
 
 namespace App\Commands\Customised;
 
+use App\Traits\Configurable;
 use Illuminate\Console\Application as Artisan;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
@@ -13,154 +16,219 @@ use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
-use function Laravel\Prompts\text;
+use Symfony\Component\Process\Process as SymfonyProcess;
+use function Illuminate\Filesystem\join_paths;
 
 class AppBuild extends Command implements SignalableCommandInterface
 {
+use Configurable;
+
 protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
-    {--b|box=* : Extra options to pass to Box}';
+    {--b|box=* : Extra options to pass to Box}
+    {--dry-run : Do not execute the command}';
 
 protected $description = 'Build a single file executable (Customised)';
-private static Carbon $buildTimestamp;
-private static string $buildVersion;
-private static string $buildName;
-private static string $outputDir;
-
-private static ?string $config = null;
-
-private static ?string $box = null;
-
-private OutputInterface $originalOutput;
 
 public function handle(): void
 {
-self::$buildTimestamp = Carbon::now('UTC');
-self::$outputDir = base_path('dev' . DIRECTORY_SEPARATOR . 'builds');
-self::$buildVersion = config('app.version');
+$this->config()->set('ts.instance', Carbon::now('UTC'));
+$this->config()->set('ts.safe', $this->config()->get('ts.instance')->format('Ymd\THis\Z'));
+$this->config()->set('name', Str::lower(config('app.name')));
+$this->config()->set('version', config('app.version'));
 
-if (self::$buildVersion === 'unreleased'){
+if ($this->config()->get('version') === 'unreleased') {
 $this->error('App has not released yet.');
 return;
 }
 
-self::$buildName = 'ntrn-' . self::$buildVersion . '-' . self::$buildTimestamp->format('Ymd\THis\Z');
+$this->config()->set('build', [
+'initial' => $this->app->basePath($this->getBinary()).'.phar',
+'id' => ($buildId = ($this->config()->get('version') . '-' . $this->config()->get('ts.safe'))),
+'path' => ($buildPath = $this->app->buildsPath($buildId)),
+'phar' => join_paths($buildPath, "{$this->config()->get('name')}.phar"),
+]);
+
+$binaries = [];
+foreach (config('dev.build.distributions', []) as $distribution => $sfx) {
+$binaries[$distribution] = [
+'target' => $distribution,
+'output' => join_paths($this->config()->get('build.path'), "{$this->config()->get('name')}-{$distribution}"),
+'sfx' => [
+'name' => $sfx,
+'local' => join_paths(config('dev.build.sfx.path'), $sfx),
+'remote' => Str::of(config('dev.build.sfx.url'))->trim()->finish('/')->append($sfx)->value(),
+],
+];
+}
+
+$this->config()->set("build.binaries", $binaries);
+
+$this->config()->set('box', [
+'binary' => join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box')),
+]);
+
+$this->config()->set('tasks', []);
 
 $this->title('Building process');
-
-$this->build(self::$buildName);
+$this->build();
 }
 
-public function run(InputInterface $input, OutputInterface $output): int
+
+
+private function nextTask(string $name, string $message): void
 {
-return parent::run($input, $this->originalOutput = $output);
+$slug = Str::slug($name, '_');
+$tasks = $this->config()->set("tasks.{$slug}", $this->config()->get("tasks.{$slug}", -1) + 1);
+
+$taskId = count($tasks) . '.' . ($tasks[$slug] > 0 ? $tasks[$slug] . '.' : '');
+
+$this->task(sprintf('%s <fg=yellow>%s</> %s', $taskId, $name, $message));
 }
 
-public function getSubscribedSignals(): array
+private function prepare(): AppBuild
 {
-if (defined('SIGINT')) {
-return [\SIGINT];
+$this->nextTask('Prepare', 'Prepare the build environment');
+
+if (! $this->isDryRun()) {
+File::ensureDirectoryExists($this->config()->get('build.path'));
+File::put(config('dev.build.app_version'), $this->config()->get('version'));
 }
 
-return [];
-}
-public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
-{
-if (defined('SIGINT') && $signal === \SIGINT) {
-if (self::$config !== null) {
-$this->clear();
-}
+return $this;
 }
 
-return self::SUCCESS;
-}
-
-private function build(string $name): void
+private function build(): void
 {
 $exception = null;
 
 try {
-$this->prepare()->compile($name);
+$this->prepare()->compile()->binaries();
 } catch (\Throwable $exception) {
 
 }
 
-$this->clear();
+$this->cleanUp();
 
 if ($exception !== null) {
 throw $exception;
 }
-
-$this->output->writeln(
-sprintf('    Compiled successfully: <fg=green>%s</>', $this->app->buildsPath($name))
-);
 }
 
-private function compile(string $name): AppBuild
+private function compile(): AppBuild
 {
-$output = self::$outputDir . DIRECTORY_SEPARATOR . self::$buildName;
-$boxBinary = ['vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box')];
-$boxBinary = base_path(implode(DIRECTORY_SEPARATOR, $boxBinary));
+$this->nextTask('Compile', 'Generate single .phar file');
 
-$process = new Process(
-command: [$boxBinary, 'compile'] + $this->getBoxOptions(),
+if ($this->isDryRun()){
+return $this;
+}
+
+$process = new SymfonyProcess(
+command: [$this->config()->get('box.binary'), 'compile'] + $this->getBoxOptions(),
 env: null,
 input: null,
 timeout: $this->getTimeout()
 );
 
-/**
-@phpstan-ignore-next-line */
-$section = tap($this->originalOutput->section())->write('');
-
-$progressBar = new ProgressBar(
-$this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL ? new NullOutput : $section, 25
-);
-
-$progressBar->setProgressCharacter("\xF0\x9F\x8D\xBA");
+$progressBar = $this->output->createProgressBar();
 
 $process->start();
 
 foreach ($process as $type => $data) {
 $progressBar->advance();
-
-if ($this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL) {
-$process::OUT === $type ? $this->info("$data") : $this->error("$data");
-}
 }
 
 $progressBar->finish();
-
-$section->clear();
-
-$this->task('   2. <fg=yellow>Compile</> into a single file');
+$progressBar->clear();
 
 $this->output->newLine();
 
-$pharPath = $this->app->basePath($this->getBinary()).'.phar';
-
-if (! File::exists($pharPath)) {
+if (! File::exists($this->config()->get('build.initial'))) {
 throw new \RuntimeException('Failed to compile the application.');
+}else{
+File::move($this->config()->get('build.initial'), $this->config()->get('build.phar'));
+
+$this->output->writeln(
+sprintf('Compiled successfully: <fg=green>%s</>', $this->config()->get('build.phar'))
+);
 }
 
-File::move($pharPath, $output);
+return $this;
+}
+private function binaries(): AppBuild
+{
+if (blank(config('dev.build.distributions'))) {
+return $this;
+}
+
+$this->nextTask('Binary', 'Prepare the distribution binaries');
+
+foreach ($this->config()->get('build.binaries') as $binary) {
+if (File::exists($binary['output']) && ! config('dev.build.overwrite')) {
+$this->info("Binary already exists: {$binary['output']}");
+continue;
+}
+
+if ($this->prepareSfx($binary)){
+$this->nextTask('Binary', "Create binary for {$binary['target']}");
+$result = Process::run("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
+
+if ($result->successful()) {
+
+$this->info("Binary is ready: {$binary['output']}");
+continue;
+}
+
+$this->error("Failed to create binary for {$binary['target']}");
+}
+}
 
 return $this;
 }
 
-private function prepare(): AppBuild
+private function prepareSfx(array $binary): bool
 {
-File::ensureDirectoryExists(self::$outputDir);
+$this->nextTask('Binary', "Prepare SFX for {$binary['target']}");
 
-return $this;
+File::ensureDirectoryExists(config('dev.build.sfx.path'));
+
+if (File::exists($binary['sfx']['local'])) {
+$this->info("SFX file is ready: {$binary['sfx']['local']}");
+return true;
 }
 
-private function clear(): void
-{
-self::$config = null;
+$this->nextTask('Binary', "Download SFX for {$binary['target']}");
 
-self::$box = null;
+if ($this->isDryRun()){
+return true;
+}
+
+$this->info("Downloading SFX file: {$binary['sfx']['remote']}");
+
+$progressBar = $this->output->createProgressBar();
+
+Http::sink($binary['sfx']['local'])
+->withOptions([
+'progress' => function ($dlSize, $dlCompleted) use($progressBar, $binary) {
+if ($progressBar->getMaxSteps() == 0 && $dlSize > 0){
+$progressBar->setMaxSteps($dlSize);
+$progressBar->start();
+}
+
+if ($progressBar->getMaxSteps() > 0){
+if ($dlCompleted < $dlSize){
+$progressBar->setProgress($dlCompleted);
+}elseif ($progressBar->getProgress() < $progressBar->getMaxSteps() && $dlCompleted == $dlSize){
+$progressBar->finish();
+$progressBar->clear();
+$this->info("SFX file is ready: {$binary['sfx']['local']}");
+}
+}
+}
+])
+->get($binary['sfx']['remote']);
+
+return true;
 }
 
 private function getBinary(): string
@@ -201,10 +269,39 @@ fn($value, $key) => Str::of($key)->start('--')->unless(blank($value), fn ($str) 
 ));
 }
 
+private function isDryRun(): bool
+{
+return $this->option('dry-run');
+}
+
+private function cleanUp(): AppBuild
+{
+if (File::exists(config('dev.build.app_version'))) {
+File::delete(config('dev.build.app_version'));
+}
+
+return $this;
+}
+
+public function getSubscribedSignals(): array
+{
+if (defined('SIGINT')) {
+return [\SIGINT];
+}
+
+return [];
+}
+public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
+{
+if (defined('SIGINT') && $signal === \SIGINT) {
+$this->cleanUp();
+}
+
+return self::SUCCESS;
+}
+
 public function __destruct()
 {
-if (self::$config !== null) {
-$this->clear();
-}
+$this->cleanUp();
 }
 }

@@ -30,8 +30,6 @@ class AppBuild extends Command implements SignalableCommandInterface
 
     protected $description = 'Build a single file executable (Customised)';
 
-    private OutputInterface $originalOutput;
-
     public function handle(): void
     {
         $this->config()->set('ts.instance', Carbon::now('UTC'));
@@ -76,10 +74,7 @@ class AppBuild extends Command implements SignalableCommandInterface
         $this->build();
     }
 
-    private function isDryRun(): bool
-    {
-        return $this->option('dry-run');
-    }
+
 
     private function nextTask(string $name, string $message): void
     {
@@ -87,7 +82,8 @@ class AppBuild extends Command implements SignalableCommandInterface
         $tasks = $this->config()->set("tasks.{$slug}", $this->config()->get("tasks.{$slug}", -1) + 1);
 
         $taskId = count($tasks) . '.' . ($tasks[$slug] > 0 ? $tasks[$slug] . '.' : '');
-        $this->task(sprintf('   %s <fg=yellow>%s</> %s', $taskId, $name, $message));
+
+        $this->task(sprintf('%s <fg=yellow>%s</> %s', $taskId, $name, $message));
     }
 
     private function prepare(): AppBuild
@@ -97,19 +93,6 @@ class AppBuild extends Command implements SignalableCommandInterface
         if (! $this->isDryRun()) {
             File::ensureDirectoryExists($this->config()->get('build.path'));
             File::put(config('dev.build.app_version'), $this->config()->get('version'));
-        }
-
-        return $this;
-    }
-
-    private function cleanUp(): AppBuild
-    {
-        $this->nextTask('Clean Up', 'Clean up the build environment');
-
-        if (! $this->isDryRun()) {
-            if (File::exists(config('dev.build.app_version'))) {
-                File::delete(config('dev.build.app_version'));
-            }
         }
 
         return $this;
@@ -132,11 +115,6 @@ class AppBuild extends Command implements SignalableCommandInterface
         }
     }
 
-    public function run(InputInterface $input, OutputInterface $output): int
-    {
-        return parent::run($input, $this->originalOutput = $output);
-    }
-
     private function compile(): AppBuild
     {
         $this->nextTask('Compile', 'Generate single .phar file');
@@ -152,29 +130,16 @@ class AppBuild extends Command implements SignalableCommandInterface
             timeout: $this->getTimeout()
         );
 
-        /** @phpstan-ignore-next-line This is an instance of `ConsoleOutputInterface` */
-        $section = tap($this->originalOutput->section())->write('');
-
-        $progressBar = new ProgressBar(
-            output: $this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL ? new NullOutput : $section,
-            max: 25
-        );
-
-        $progressBar->setProgressCharacter("\xF0\x9F\x8D\xBA");
+        $progressBar = $this->output->createProgressBar();
 
         $process->start();
 
         foreach ($process as $type => $data) {
             $progressBar->advance();
-
-            if ($this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL) {
-                $process::OUT === $type ? $this->info("$data") : $this->error("$data");
-            }
         }
 
         $progressBar->finish();
-
-        $section->clear();
+        $progressBar->clear();
 
         $this->output->newLine();
 
@@ -182,10 +147,9 @@ class AppBuild extends Command implements SignalableCommandInterface
             throw new \RuntimeException('Failed to compile the application.');
         }else{
             File::move($this->config()->get('build.initial'), $this->config()->get('build.phar'));
-            File::chmod($this->config()->get('build.phar'), config('dev.build.chmod'));
 
             $this->output->writeln(
-                sprintf('    Compiled successfully: <fg=green>%s</>', $this->config()->get('build.phar'))
+                sprintf('Compiled successfully: <fg=green>%s</>', $this->config()->get('build.phar'))
             );
         }
 
@@ -207,11 +171,9 @@ class AppBuild extends Command implements SignalableCommandInterface
 
             if ($this->prepareSfx($binary)){
                 $this->nextTask('Binary', "Create binary for {$binary['target']}");
-
                 $result = Process::run("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
 
                 if ($result->successful()) {
-                    File::chmod($binary['output'], config('dev.build.chmod'));
                     $this->info("Binary is ready: {$binary['output']}");
                     continue;
                 }
@@ -226,6 +188,8 @@ class AppBuild extends Command implements SignalableCommandInterface
     private function prepareSfx(array $binary): bool
     {
         $this->nextTask('Binary', "Prepare SFX for {$binary['target']}");
+
+        File::ensureDirectoryExists(config('dev.build.sfx.path'));
 
         if (File::exists($binary['sfx']['local'])) {
             $this->info("SFX file is ready: {$binary['sfx']['local']}");
@@ -302,6 +266,20 @@ class AppBuild extends Command implements SignalableCommandInterface
         return array_values(Arr::map($boxOptions,
             fn($value, $key) => Str::of($key)->start('--')->unless(blank($value), fn ($str) => $str->append('=' . $value))->value()
         ));
+    }
+
+    private function isDryRun(): bool
+    {
+        return $this->option('dry-run');
+    }
+
+    private function cleanUp(): AppBuild
+    {
+        if (File::exists(config('dev.build.app_version'))) {
+            File::delete(config('dev.build.app_version'));
+        }
+
+        return $this;
     }
 
     public function getSubscribedSignals(): array
