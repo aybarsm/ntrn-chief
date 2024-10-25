@@ -26,6 +26,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 #Custom - Development
+config/app_version
+.box_dump/
 !builds/utils
 dev/
 *.bak*
