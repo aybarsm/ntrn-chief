@@ -73,7 +73,11 @@ class TestMe extends Command
                 }
 //                $this->info("Downloaded: {$dlCompleted} / {$dlSize}");
             }
-        ])->get($remote);
+        ])->get($remote)->then(
+            onFulfilled: function () use ($local) {
+                $this->info("SFX file is downloaded: {$local}");
+            },
+        );;
 
 //        $response = Http::head($remote);
 //        $fileSize = (int)$response->header('Content-Length');

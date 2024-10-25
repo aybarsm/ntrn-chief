@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
@@ -15,7 +16,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Process as SymfonyProcess;
 use function Illuminate\Filesystem\join_paths;
 
 class AppBuild extends Command implements SignalableCommandInterface
@@ -69,70 +70,67 @@ class AppBuild extends Command implements SignalableCommandInterface
             'binary' => join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box')),
         ]);
 
-
-
         $this->config()->set('tasks', []);
 
-
-//        $this->title('Building process');
-//        $this->build();
+        $this->title('Building process');
+        $this->build();
     }
 
-//    private function isDryRun(): bool
-//    {
-//        return $this->option('dry-run');
-//    }
-//
-//    private function nextTask(string $name, string $message): void
-//    {
-//        $slug = Str::slug($name, '_');
-//        $tasks = $this->config()->set("tasks.{$slug}", $this->config()->get("tasks.{$slug}", -1) + 1);
-//
-//        $taskId = count($tasks) . '.' . ($tasks[$slug] > 0 ? $tasks[$slug] . '.' : '');
-//        $this->task(sprintf('   %s <fg=yellow>%s</> %s', $taskId, $name, $message));
-//    }
-//
-//    private function prepare(): AppBuild
-//    {
-//        $this->nextTask('Prepare', 'Prepare the build environment');
-//
-//        if (! $this->isDryRun()) {
-//            File::ensureDirectoryExists($this->config()->get('build.path'));
-//            File::put(config('dev.build.app_version'), $this->config()->get('version'));
-//        }
-//
-//        return $this;
-//    }
-//
-//    private function cleanUp(): AppBuild
-//    {
-//        $this->nextTask('Clean Up', 'Clean up the build environment');
-//
-//        if (! $this->isDryRun()) {
-//            if (File::exists(config('dev.build.app_version'))) {
-//                File::delete(config('dev.build.app_version'));
-//            }
-//        }
-//
-//        return $this;
-//    }
-//
-//    private function build(): void
-//    {
-//        $exception = null;
-//
-//        try {
-//            $this->prepare()->compile()->binaries();
-//        } catch (\Throwable $exception) {
-//            //
-//        }
-//
-//        $this->cleanUp();
-//
-//        if ($exception !== null) {
-//            throw $exception;
-//        }
-//    }
+    private function isDryRun(): bool
+    {
+        return $this->option('dry-run');
+    }
+
+    private function nextTask(string $name, string $message): void
+    {
+        $slug = Str::slug($name, '_');
+        $tasks = $this->config()->set("tasks.{$slug}", $this->config()->get("tasks.{$slug}", -1) + 1);
+
+        $taskId = count($tasks) . '.' . ($tasks[$slug] > 0 ? $tasks[$slug] . '.' : '');
+        $this->task(sprintf('   %s <fg=yellow>%s</> %s', $taskId, $name, $message));
+    }
+
+    private function prepare(): AppBuild
+    {
+        $this->nextTask('Prepare', 'Prepare the build environment');
+
+        if (! $this->isDryRun()) {
+            File::ensureDirectoryExists($this->config()->get('build.path'));
+            File::put(config('dev.build.app_version'), $this->config()->get('version'));
+        }
+
+        return $this;
+    }
+
+    private function cleanUp(): AppBuild
+    {
+        $this->nextTask('Clean Up', 'Clean up the build environment');
+
+        if (! $this->isDryRun()) {
+            if (File::exists(config('dev.build.app_version'))) {
+                File::delete(config('dev.build.app_version'));
+            }
+        }
+
+        return $this;
+    }
+
+    private function build(): void
+    {
+        $exception = null;
+
+        try {
+            $this->prepare()->compile()->binaries();
+        } catch (\Throwable $exception) {
+            //
+        }
+
+        $this->cleanUp();
+
+        if ($exception !== null) {
+            throw $exception;
+        }
+    }
 
     public function run(InputInterface $input, OutputInterface $output): int
     {
@@ -147,7 +145,7 @@ class AppBuild extends Command implements SignalableCommandInterface
             return $this;
         }
 
-        $process = new Process(
+        $process = new SymfonyProcess(
             command: [$this->config()->get('box.binary'), 'compile'] + $this->getBoxOptions(),
             env: null,
             input: null,
@@ -202,84 +200,70 @@ class AppBuild extends Command implements SignalableCommandInterface
         $this->nextTask('Binary', 'Prepare the distribution binaries');
 
         foreach ($this->config()->get('build.binaries') as $binary) {
-            if ($this->prepareSfx($binary)){
+            if (File::exists($binary['output']) && ! config('dev.build.overwrite')) {
+                $this->info("Binary already exists: {$binary['output']}");
+                continue;
+            }
 
+            if ($this->prepareSfx($binary)){
+                $this->nextTask('Binary', "Create binary for {$binary['target']}");
+
+                $result = Process::run("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
+
+                if ($result->successful()) {
+                    File::chmod($binary['output'], config('dev.build.chmod'));
+                    $this->info("Binary is ready: {$binary['output']}");
+                    continue;
+                }
+
+                $this->error("Failed to create binary for {$binary['target']}");
             }
         }
 
         return $this;
     }
 
-    private function remoteFileSize(string $url): int|false
-    {
-        $response = Http::head($url);
-
-        if (! $response->header('Content-Length')) {
-            return false;
-        }
-
-        return (int)$response->header('Content-Length');
-    }
-
     private function prepareSfx(array $binary): bool
     {
         $this->nextTask('Binary', "Prepare SFX for {$binary['target']}");
 
-        $fileSize = $this->remoteFileSize($binary['sfx']['remote']);
-
-        if ($fileSize === false) {
-            $this->error("Failed to query the SFX file size on prepare stage: {$binary['sfx']['remote']}");
-            return false;
-        }
-
-        $binary['sfx']['fileSize'] = $fileSize;
-
         if (File::exists($binary['sfx']['local'])) {
-            if (File::size($binary['sfx']['local']) == $fileSize){
-                $this->info("SFX file is ready: {$binary['sfx']['local']}");
-                return true;
-            }
-
-            $this->info("SFX file size mismatch, will be downloaded: {$binary['sfx']['local']}");
-            if (! $this->isDryRun()){
-                File::delete($binary['sfx']['local']);
-            }
+            $this->info("SFX file is ready: {$binary['sfx']['local']}");
+            return true;
         }
 
-    }
-
-    private function downloadSfx(array $binary): bool
-    {
         $this->nextTask('Binary', "Download SFX for {$binary['target']}");
 
-        if (! isset($binary['sfx']['fileSize'])) {
-            $fileSize = $this->remoteFileSize($binary['sfx']['remote']);
-            if ($fileSize === false) {
-                $this->error("Failed to query the SFX file size on download stage: {$binary['sfx']['remote']}");
-                return false;
-            }
-
-            $binary['sfx']['fileSize'] = $fileSize;
+        if ($this->isDryRun()){
+            return true;
         }
 
-        /** @phpstan-ignore-next-line This is an instance of `ConsoleOutputInterface` */
-        $section = tap($this->originalOutput->section())->write('');
+        $this->info("Downloading SFX file: {$binary['sfx']['remote']}");
 
-        $progressBar = new ProgressBar(
-            output: $this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL ? new NullOutput : $section,
-            max: (int)$fileSize
-        );
+        $progressBar = $this->output->createProgressBar();
 
-        $progressBar->start();
+        Http::sink($binary['sfx']['local'])
+        ->withOptions([
+            'progress' => function ($dlSize, $dlCompleted) use($progressBar, $binary) {
+                if ($progressBar->getMaxSteps() == 0 && $dlSize > 0){
+                    $progressBar->setMaxSteps($dlSize);
+                    $progressBar->start();
+                }
 
-        $fileHandle = fopen($binary['sfx']['local'], 'w');
+                if ($progressBar->getMaxSteps() > 0){
+                    if ($dlCompleted < $dlSize){
+                        $progressBar->setProgress($dlCompleted);
+                    }elseif ($progressBar->getProgress() < $progressBar->getMaxSteps() && $dlCompleted == $dlSize){
+                        $progressBar->finish();
+                        $progressBar->clear();
+                        $this->info("SFX file is ready: {$binary['sfx']['local']}");
+                    }
+                }
+            }
+        ])
+        ->get($binary['sfx']['remote']);
 
-        Http::withOptions(['stream' => true])
-            ->get($binary['sfx']['remote'])
-            ->onBodyChunk(function ($chunk) use ($fileHandle, $progressBar) {
-                fwrite($fileHandle, $chunk);
-                $progressBar->advance(strlen($chunk));
-            });
+        return true;
     }
 
     private function getBinary(): string
