@@ -19,5 +19,6 @@ return [
     ],
     'remove' => [
         LaravelZero\Framework\Commands\MakeCommand::class,
+        LaravelZero\Framework\Commands\BuildCommand::class,
     ],
 ];

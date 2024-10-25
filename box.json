@@ -1,10 +1,13 @@
 {
+    "main": "ntrn",
     "chmod": "0755",
     "directories": [
         "app",
         "bootstrap",
         "config",
-        "vendor"
+        "vendor",
+        "resources",
+        "database"
     ],
     "files": [
         "composer.json"

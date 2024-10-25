@@ -25,7 +25,9 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-#Custom - Dev
+#Custom - Development
+!builds/utils
 dev/
 *.bak*
 *.bak*/
+storage/

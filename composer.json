@@ -1,22 +1,35 @@
 {
-    "name": "laravel-zero/laravel-zero",
-    "description": "The Laravel Zero Framework.",
+    "name": "aybarsm/ntrn-chief",
+    "description": "A Laravel Zero application for Netern managed servers.",
     "keywords": ["framework", "laravel", "laravel zero", "console", "cli"],
-    "homepage": "https://laravel-zero.com",
+    "homepage": "https://netern.com",
     "type": "project",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/laravel-zero/laravel-zero/issues",
-        "source": "https://github.com/laravel-zero/laravel-zero"
+        "issues": "https://github.com/aybarsm/ntrn-chief/issues",
+        "source": "https://github.com/aybarsm/ntrn-chief"
     },
     "authors": [
         {
-            "name": "Nuno Maduro",
-            "email": "enunomaduro@gmail.com"
+            "name": "Murat Aybars",
+            "email": "murat.aybars@blrm.co"
         }
     ],
     "require": {
         "php": "^8.3.0",
+        "ext-ctype": "*",
+        "ext-curl": "*",
+        "ext-dom": "*",
+        "ext-fileinfo": "*",
+        "ext-filter": "*",
+        "ext-hash": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "ext-pcre": "*",
+        "ext-pdo": "*",
+        "ext-tokenizer": "*",
+        "ext-xml": "*",
+        "ext-phar": "*",
         "ext-json": "*",
         "illuminate/database": "^11.5",
         "illuminate/encryption": "^11.29",
@@ -29,6 +42,7 @@
         "nunomaduro/laravel-console-menu": "^3.5"
     },
     "require-dev": {
+        "brick/varexporter": "^0.5.0",
         "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.15.2",
         "mockery/mockery": "^1.6.11",

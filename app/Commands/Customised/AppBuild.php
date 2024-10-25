@@ -3,7 +3,11 @@
 namespace App\Commands\Customised;
 
 use Illuminate\Console\Application as Artisan;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -16,23 +20,50 @@ use function Laravel\Prompts\text;
 class AppBuild extends Command implements SignalableCommandInterface
 {
     protected $signature = 'app:build
-                            {name? : The build name}
-                            {--build-version= : The build version, if not provided it will be asked}
-                            {--timeout=300 : The timeout in seconds or 0 to disable}';
+    {--timeout=300 : The timeout in seconds or 0 to disable}
+    {--b|box=* : Extra options to pass to Box}';
 
     protected $description = 'Build a single file executable (Customised)';
+    private static Carbon $buildTimestamp;
+    private static string $buildVersion;
+    private static string $buildName;
+    private static string $outputDir;
+    private static string $buildUtilsDir;
 
     private static ?string $config = null;
 
     private static ?string $box = null;
 
     private OutputInterface $originalOutput;
+    private array $tasks = [];
 
     public function handle(): void
     {
+        self::$buildTimestamp = Carbon::now('UTC');
+        self::$buildVersion = app('git.version');
+        self::$outputDir = base_path('dev' . DIRECTORY_SEPARATOR . 'builds' . DIRECTORY_SEPARATOR . self::$buildVersion . '-' . self::$buildTimestamp->format('Ymd\THis\Z'));
+
+        if (self::$buildVersion === 'unreleased'){
+            $this->error('App has not released yet.');
+            return;
+        }
+
+        self::$buildName = 'ntrn';
+//        self::$composer = File::json(base_path('composer.json'));
+
         $this->title('Building process');
 
-        $this->build($this->input->getArgument('name') ?? $this->getBinary());
+        $this->build(self::$buildName);
+    }
+
+    private function nextTask(string $name, string $message): void
+    {
+        $slug = Str::slug($name);
+        $this->tasks[$slug] = (($this->tasks[$slug] ?? 0) + 1);
+
+        $taskId = count($this->tasks) . '.' . ($this->tasks[$slug] > 1 ? '.' . $this->tasks[$slug] : '');
+
+        $this->task(sprintf('   %s <fg=yellow>%s</> %s', $taskId, $name, $message));
     }
 
     public function run(InputInterface $input, OutputInterface $output): int
@@ -82,25 +113,25 @@ class AppBuild extends Command implements SignalableCommandInterface
 
     private function compile(string $name): AppBuild
     {
-        if (! File::exists($this->app->buildsPath())) {
-            File::makeDirectory($this->app->buildsPath());
-        }
+        $output = self::$outputDir . DIRECTORY_SEPARATOR . self::$buildName;
+        $boxBinary = ['vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box')];
+        $boxBinary = base_path(implode(DIRECTORY_SEPARATOR, $boxBinary));
 
-        $boxBinary = windows_os() ? '.\box.bat' : './box';
+        $this->nextTask('Compile', 'Generate single .phar file.');
 
         $process = new Process(
-            [$boxBinary, 'compile', '--working-dir='.base_path(), '--config='.base_path('box.json')] + $this->getExtraBoxOptions(),
-            dirname(__DIR__, 2).'/bin',
-            null,
-            null,
-            $this->getTimeout()
+            command: [$boxBinary, 'compile'] + $this->getBoxOptions(),
+            env: null,
+            input: null,
+            timeout: $this->getTimeout()
         );
 
         /** @phpstan-ignore-next-line This is an instance of `ConsoleOutputInterface` */
         $section = tap($this->originalOutput->section())->write('');
 
         $progressBar = new ProgressBar(
-            $this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL ? new NullOutput : $section, 25
+            output: $this->output->getVerbosity() > OutputInterface::VERBOSITY_NORMAL ? new NullOutput : $section,
+            max: 25
         );
 
         $progressBar->setProgressCharacter("\xF0\x9F\x8D\xBA");
@@ -119,8 +150,6 @@ class AppBuild extends Command implements SignalableCommandInterface
 
         $section->clear();
 
-        $this->task('   2. <fg=yellow>Compile</> into a single file');
-
         $this->output->newLine();
 
         $pharPath = $this->app->basePath($this->getBinary()).'.phar';
@@ -129,50 +158,66 @@ class AppBuild extends Command implements SignalableCommandInterface
             throw new \RuntimeException('Failed to compile the application.');
         }
 
-        File::move($pharPath, $this->app->buildsPath($name));
+        File::move($pharPath, "{$output}.phar");
+        File::chmod("{$output}.phar", 0755);
+
+        $this->nextTask('Binary', 'Generate binary files for ' . implode(', ', config('dev.build.distributions')) . '.');
+
+        foreach(config('dev.build.distributions') as $platform => $sfx){
+            $this->nextTask('Binary', "for {$platform}");
+            $binary = "{$output}-{$platform}";
+
+            if (! config('dev.build.overwrite') && File::exists($binary)) {
+                $this->output->writeln(
+                    sprintf('    Binary is ready: <fg=green>%s</>', $binary)
+                );
+                File::chmod($binary, config('dev.build.chmod'));
+                continue;
+            }
+
+        }
 
         return $this;
     }
 
+    private function prepareSfx(string $distribution, string $sfx): bool
+    {
+        $this->nextTask('Binary', "Prepare SFX for {$distribution}");
+
+        $sfxLocal = base_path(implode(DIRECTORY_SEPARATOR, ['dev', 'utils', 'sfx', $sfx]));
+
+        $sfxRemote = Str::of(config('dev.build.sfx.url'))->trim()->finish('/')->append($sfx)->value();
+        $response = Http::head($sfxRemote);
+        $fileSize = $response->header('Content-Length');
+
+        if (File::exists($sfxLocal) && File::size($sfxLocal) == $fileSize) {
+            $this->info("SFX file is ready: {$sfxLocal}");
+            return true;
+        }
+
+        if (!$fileSize) {
+            $this->error("Failed to query the SFX file size: {$sfxRemote}");
+            return false;
+        }
+
+
+
+    }
+
     private function prepare(): AppBuild
     {
-        $configFile = $this->app->configPath('app.php');
-        self::$config = File::get($configFile);
-
-        $config = include $configFile;
-
-        $config['env'] = 'production';
-        $version = $this->option('build-version') ?: text('Build version?', default: $config['version']);
-        $config['version'] = $version;
-
-        $boxFile = $this->app->basePath('box.json');
-        self::$box = File::get($boxFile);
-
-        $this->task(
-            '   1. Moving application to <fg=yellow>production mode</>',
-            function () use ($configFile, $config) {
-                File::put($configFile, '<?php return '.var_export($config, true).';'.PHP_EOL);
-            }
-        );
-
-        $boxContents = json_decode(self::$box, true);
-        $boxContents['main'] = $this->getBinary();
-        File::put($boxFile, json_encode($boxContents));
-
-        File::put($configFile, '<?php return '.var_export($config, true).';'.PHP_EOL);
+        File::ensureDirectoryExists(self::$outputDir);
+        File::put(config_path('app_version'), self::$buildVersion);
 
         return $this;
     }
 
     private function clear(): void
     {
-        File::put($this->app->configPath('app.php'), self::$config);
-
-        File::put($this->app->basePath('box.json'), self::$box);
-
         self::$config = null;
 
         self::$box = null;
+        File::delete(config_path('app_version'));
     }
 
     private function getBinary(): string
@@ -191,15 +236,26 @@ class AppBuild extends Command implements SignalableCommandInterface
         return $timeout > 0 ? $timeout : null;
     }
 
-    private function getExtraBoxOptions(): array
+    private function getBoxOptions(): array
     {
-        $extraBoxOptions = [];
-
-        if ($this->output->isDebug()) {
-            $extraBoxOptions[] = '--debug';
+        $boxOptions = [];
+        foreach($this->option('box') as $option){
+            $option = Str::of($option)->trim();
+            $boxOptions[$option->ltrim('-')->before('=')->value()] = $option->after('=')->value();
         }
 
-        return $extraBoxOptions;
+        $boxOptions = array_merge($boxOptions, [
+            'working-dir' => base_path(),
+            'config' => base_path('box.json'),
+        ]);
+
+        if ($this->output->isDebug()) {
+            $boxOptions['debug'] = '';
+        }
+
+        return array_values(Arr::map($boxOptions,
+            fn($value, $key) => Str::of($key)->start('--')->unless(blank($value), fn ($str) => $str->append('=' . $value))->value()
+        ));
     }
 
     public function __destruct()
