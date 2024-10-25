@@ -1,6 +1,6 @@
 <?php
 
-use App\Framework\Application;
+use LaravelZero\Framework\Application;
 
 $app = Application::configure(basePath: dirname(__DIR__))->create();
 
@@ -9,8 +9,6 @@ if (\Phar::running(false)) {
         $app->useEnvironmentPath(getenv('NTRN_BASE'));
         $app->useStoragePath(getenv('NTRN_BASE'));
     }
-}else {
-    $app->useBuildsPath($app->basePath('dev/'));
 }
 
 return $app;

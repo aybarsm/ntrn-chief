@@ -2,9 +2,9 @@
 
 return (\Phar::running(false) ? [] : [
     'build' => [
-        'chmod' => 0755,
+        'chmod' => 755,
         'overwrite' => false,
-        'output' => base_path('build'),
+        'app_version' => config_path('app_version'),
         'sfx' => [
             'path' => base_path('dev/utils/sfx'),
             'url' => 'https://s3.blrm.net/vault/php-micro'
