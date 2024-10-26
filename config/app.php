@@ -7,6 +7,8 @@ return [
     'providers' => [
         App\Providers\AppServiceProvider::class,
         Rahul900Day\LaravelConsoleSpinner\LaravelConsoleSpinnerServiceProvider::class,
+        Illuminate\Pipeline\PipelineServiceProvider::class,
+//        Illuminate\Concurrency\ConcurrencyServiceProvider::class,
     ],
     'key' => env('APP_KEY'),
 ];

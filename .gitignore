@@ -26,6 +26,7 @@ Network Trash Folder
 Temporary Items
 .apdisk
 #Custom - Development
+app/Commands/Dev/
 config/app_version
 .box_dump/
 builds/

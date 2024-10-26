@@ -9,12 +9,14 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Pipeline;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Process\Process as SymfonyProcess;
 use function Illuminate\Filesystem\join_paths;
+use function Laravel\Prompts\progress;
 
 class AppBuild extends Command implements SignalableCommandInterface
 {
@@ -50,24 +52,27 @@ class AppBuild extends Command implements SignalableCommandInterface
             'phar' => join_paths($buildPath, "{$this->config()->get('name')}.phar"),
         ]);
 
-        $spcPath = config('dev.build.spc.path');
-        $spcUrl = Str::of(config('dev.build.spc.url'))->trim()->finish('/');
-        $spcFileNamePattern = config('dev.build.spc.fileNamePattern');
+        $microPath = config('dev.build.micro.path');
+        $microUrl = Str::of(config('dev.build.micro.url'))->trim()->finish('/');
 
         $binaries = [];
-        foreach (config('dev.build.spc.distributions', []) as $distribution => $sfx) {
-            $sfxLocalName = Str::of($sfx)->match($spcFileNamePattern)->finish('.sfx')->value();
-            $sfxUrl = $spcUrl->finish($sfx)->value();
+        foreach (config('dev.build.micro.distributions', []) as $distribution => $micro) {
+            $microLocal = join_paths($microPath, $micro['local']);
+            $microRemote = $microUrl->finish($micro['remote'])->value();
+            $archivePattern = config('dev.build.micro.archivePattern', '');
 
             $binaries[$distribution] = [
                 'target' => $distribution,
                 'output' => join_paths($this->config()->get('build.path'), "{$this->config()->get('name')}-{$distribution}"),
-                'spc' => [
-                    'name' => $sfx,
-                    'local' => join_paths($spcPath, $sfxLocalName),
-                    'remote' => $spcUrl->finish($sfx)->value(),
+                'sfx' => [
+                    'local' => $microLocal,
+                    'remote' => $microRemote,
                 ],
             ];
+
+            if (! blank($archivePattern)) {
+                $binaries[$distribution]['sfx']['remoteArchive'] = Str::isMatch($archivePattern, $microRemote);
+            }
         }
 
         $this->config()->set("build.binaries", $binaries);
@@ -173,11 +178,6 @@ class AppBuild extends Command implements SignalableCommandInterface
         $this->nextTask('Binary', 'Prepare the distribution binaries');
 
         foreach ($this->config()->get('build.binaries') as $binary) {
-            if (File::exists($binary['output']) && ! config('dev.build.overwrite')) {
-                $this->info("Binary already exists: {$binary['output']}");
-                continue;
-            }
-
             if ($this->prepareSfx($binary)){
                 $this->nextTask('Binary', "Create binary for {$binary['target']}");
 
@@ -221,7 +221,7 @@ class AppBuild extends Command implements SignalableCommandInterface
     {
         $this->nextTask('Binary', "Prepare SFX for {$binary['target']}");
 
-        File::ensureDirectoryExists(config('dev.build.sfx.path'));
+        File::ensureDirectoryExists(dirname($binary['sfx']['local']));
 
         if (File::exists($binary['sfx']['local'])) {
             $this->info("SFX file is ready: {$binary['sfx']['local']}");
@@ -235,6 +235,66 @@ class AppBuild extends Command implements SignalableCommandInterface
         }
 
         $this->info("Downloading SFX file: {$binary['sfx']['remote']}");
+
+        Pipeline::send($binary)
+            ->through([
+                function ($binary, \Closure $next) {
+                    if (data_get('binary', 'sfx.remoteArchive', false) === true){
+                        $binary['sfx']['tempDir'] = join_paths(sys_get_temp_dir(), Str::uuid());
+                        $binary['sfx']['tempFile'] = join_paths($binary['sfx']['tempDir'], basename($binary['sfx']['remote']));
+                        File::ensureDirectoryExists($binary['sfx']['tempDir']);
+                    }
+                    return $next($binary);
+                },
+                function ($binary, \Closure $next) {
+                    $sinkTo = $binary['sfx']['local'];
+                    if (data_get('binary', 'sfx.remoteArchive', false) === true){
+                        $sinkTo = $binary['sfx']['tempFile'] = join_paths($binary['sfx']['tempDir'], basename($binary['sfx']['remote']));
+                    }
+
+
+                    return $next($binary);
+                },
+
+            ]);
+
+        if (data_get('binary', 'sfx.remoteArchive', false) === true){
+            $tempDir = join_paths(sys_get_temp_dir(), Str::uuid());
+            $tempFile = join_paths($tempDir, basename($binary['sfx']['remote']));
+            File::ensureDirectoryExists($tempDir);
+
+            Http::sink($tempFile)
+                ->withOptions([
+                    'progress' => function ($dlSize, $dlCompleted) use($tempFile) {
+                        progress($dlSize, $dlCompleted, $tempFile);
+                    }
+                ])
+                ->get($binary['sfx']['remote']);
+
+            $this->info("Extracting SFX file: {$tempFile}");
+
+            $result = Archive::extractTo($tempFile, $tempDir, 'micro.sfx', true);
+
+            if (File::exists($tempFile)){
+                File::delete($tempFile);
+            }
+
+            if ($result->isCompressed()){
+                $result->decompress();
+            }
+
+            $sfxFile = join_paths($tempDir, 'micro.sfx');
+
+            if (File::exists($sfxFile)){
+                File::move($sfxFile, $binary['sfx']['local']);
+                File::deleteDirectory($tempDir);
+                $this->info("SFX file is ready: {$binary['sfx']['local']}");
+                return true;
+            }
+
+            $this->error("Failed to extract SFX file: {$tempFile}");
+            return false;
+        }
 
         $progressBar = $this->output->createProgressBar();
 
