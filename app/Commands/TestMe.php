@@ -2,38 +2,50 @@
 
 namespace App\Commands;
 
+use App\Services\Archive;
+use App\Traits\Command\OriginalOutput;
+use App\Traits\Command\SignalHandler;
+
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Pipeline;
+use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
+use Illuminate\Process\Pipe;
+use Illuminate\Support\Facades\Process;
+use Rahul900Day\LaravelConsoleSpinner\Spinner;
 use function Illuminate\Filesystem\join_paths;
 
 class TestMe extends Command
 {
+    use OriginalOutput, SignalHandler;
     protected $signature = 'test:me';
     protected $description = 'Command description';
 
     public function handle(): void
     {
-        $temp = join_paths(sys_get_temp_dir(), 'testme');
-        $this->info($temp);
-//        $temp = tmpfile();
-//        $this->info('Temp : ' . $temp);
-//        $this->info(sys_get_temp_dir());
-//        $file = $this->app->buildsPath('v0.0.1-20241025T182405Z/deneme');
-//        $this->info('File : ' . $file . ' : ' . fileperms($file));
-//        dump(stat($file));
-//        dump(fileperms($file));
-//        $file = $this->app->buildsPath('v0.0.1-20241025T182405Z/ntrn-linux-x86_64');
-//        $this->info('File : ' . $file . ' : ' . fileperms($file));
-//        $file = $this->app->buildsPath('v0.0.1-20241025T182405Z/denemex');
-//        $this->info('File : ' . $file . ' : ' . fileperms($file));
-//        $file = $this->app->buildsPath('v0.0.1-20241025T182405Z/denemez');
-//        $this->info('File : ' . $file . ' : ' . fileperms($file));
-//        $file = $this->app->buildsPath('v0.0.1-20241025T182405Z/denemey');
-//        File::chmod($file, octdec(config('dev.build.chmod')));
-//        $this->info('File : ' . $file . ' : ' . fileperms($file));
-//        dump(stat($file));
-//        dump(fileperms($file));
-//        $this->info(octdec('0775'));
+       $archive = '/Users/aybarsm/Downloads/php-8.3.9-minimal-micro-linux-x86_64.tar.gz';
+
+        $pattern = windows_os() ? '/\\\\(?<fileName>[^\\\\]+)\.(zip|tar|tar.gz)$/' : '/\/(?<fileName>[^\/]+)\.(zip|tar|tar.gz)$/';
+        $fileName = Str::of($archive)->match($pattern)->finish('.sfx')->value();
+        dump($fileName);
+//        $fileName = Str::match($pattern, $archive);
+//        $tempDir = join_paths(sys_get_temp_dir(), $fileName);
+//        $tempFile = join_paths($tempDir, 'micro.sfx');
+//        dump($tempDir);
+//        $result = Archive::extractTo($archive, $tempDir, 'micro.sfx', true);
+//        dump($result);
+//        if (File::exists($tempFile)){
+//            $this->info('File exists');
+//            File::deleteDirectory($tempDir);
+//        }
+//       dump(Str::match('/\/(?<fileName>[^\/]+)\.(zip|tar|tar.gz)$/', $archive));
+//       $temp = join_paths(sys_get_temp_dir())
+
+//       $file = new \SplFileInfo($archive);
+//       dump($file->getBasename($file->getExtension()));
+//       dump(basename($archive, '.tar.gz'));
+
+
     }
 
 }

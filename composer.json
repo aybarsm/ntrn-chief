@@ -25,7 +25,8 @@
         "illuminate/view": "^11.5",
         "laravel-zero/framework": "^11.0.0",
         "laravel-zero/phar-updater": "^1.4",
-        "nunomaduro/laravel-console-menu": "^3.5"
+        "nunomaduro/laravel-console-menu": "^3.5",
+        "rahul900day/laravel-console-spinner": "^1.1"
     },
     "require-dev": {
         "brick/varexporter": "^0.5.0",

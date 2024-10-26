@@ -2,6 +2,7 @@
 
 namespace App\Commands\Customised;
 
+use App\Traits\Command\SignalHandler;
 use App\Traits\Configurable;
 use Illuminate\Console\Application as Artisan;
 use Illuminate\Support\Arr;
@@ -12,16 +13,12 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
-use Symfony\Component\Console\Helper\ProgressBar;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\NullOutput;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process as SymfonyProcess;
 use function Illuminate\Filesystem\join_paths;
 
 class AppBuild extends Command implements SignalableCommandInterface
 {
-    use Configurable;
+    use Configurable, SignalHandler;
 
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
@@ -32,6 +29,10 @@ class AppBuild extends Command implements SignalableCommandInterface
 
     public function handle(): void
     {
+        $this->setSignalHandler('SIGINT', function (...$params) {
+            $this->cleanUp(true);
+        });
+
         $this->config()->set('ts.instance', Carbon::now('UTC'));
         $this->config()->set('ts.safe', $this->config()->get('ts.instance')->format('Ymd\THis\Z'));
         $this->config()->set('name', Str::lower(config('app.name')));
@@ -49,15 +50,22 @@ class AppBuild extends Command implements SignalableCommandInterface
             'phar' => join_paths($buildPath, "{$this->config()->get('name')}.phar"),
         ]);
 
+        $spcPath = config('dev.build.spc.path');
+        $spcUrl = Str::of(config('dev.build.spc.url'))->trim()->finish('/');
+        $spcFileNamePattern = config('dev.build.spc.fileNamePattern');
+
         $binaries = [];
-        foreach (config('dev.build.distributions', []) as $distribution => $sfx) {
+        foreach (config('dev.build.spc.distributions', []) as $distribution => $sfx) {
+            $sfxLocalName = Str::of($sfx)->match($spcFileNamePattern)->finish('.sfx')->value();
+            $sfxUrl = $spcUrl->finish($sfx)->value();
+
             $binaries[$distribution] = [
                 'target' => $distribution,
                 'output' => join_paths($this->config()->get('build.path'), "{$this->config()->get('name')}-{$distribution}"),
-                'sfx' => [
+                'spc' => [
                     'name' => $sfx,
-                    'local' => join_paths(config('dev.build.sfx.path'), $sfx),
-                    'remote' => Str::of(config('dev.build.sfx.url'))->trim()->finish('/')->append($sfx)->value(),
+                    'local' => join_paths($spcPath, $sfxLocalName),
+                    'remote' => $spcUrl->finish($sfx)->value(),
                 ],
             ];
         }
@@ -71,7 +79,8 @@ class AppBuild extends Command implements SignalableCommandInterface
         $this->config()->set('tasks', []);
 
         $this->title('Building process');
-        $this->build();
+        dump($this->config()->full());
+//        $this->build();
     }
 
 
@@ -123,23 +132,23 @@ class AppBuild extends Command implements SignalableCommandInterface
             return $this;
         }
 
-        $process = new SymfonyProcess(
-            command: [$this->config()->get('box.binary'), 'compile'] + $this->getBoxOptions(),
-            env: null,
-            input: null,
-            timeout: $this->getTimeout()
-        );
+        $this->withSpinner(1, function($spinner) {
+            $process = Process::timeout($this->getTimeout())
+                ->command([$this->config()->get('box.binary'), 'compile'] + $this->getBoxOptions())
+                ->start();
 
-        $progressBar = $this->output->createProgressBar();
+            while($process->running()) {
+                $spinner->setMaxSteps($spinner->getMaxSteps() + 1);
+                $spinner->advance();
+                usleep(5000);
+            }
 
-        $process->start();
+            $result = $process->wait();
+            $message = $result->successful() ? ['SUCCESS', 'completed successfully'] : ['ERROR', "failed with exit code {$result->exitCode()}"];
+            $message = sprintf("!%s! Building %s.", ...$message);
 
-        foreach ($process as $type => $data) {
-            $progressBar->advance();
-        }
-
-        $progressBar->finish();
-        $progressBar->clear();
+            $spinner->setMessage($message);
+        }, 'Building a single .phar file...');
 
         $this->output->newLine();
 
@@ -171,7 +180,26 @@ class AppBuild extends Command implements SignalableCommandInterface
 
             if ($this->prepareSfx($binary)){
                 $this->nextTask('Binary', "Create binary for {$binary['target']}");
-                $result = Process::run("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
+
+                $result = $this->withSpinner(1, function($spinner) use($binary) {
+                    $process = Process::timeout($this->getTimeout())
+                        ->start("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
+
+                    while($process->running()) {
+                        $spinner->setMaxSteps($spinner->getMaxSteps() + 1);
+                        $spinner->advance();
+                        usleep(5000);
+                    }
+
+                    $result = $process->wait();
+                    $message = $result->successful() ? ['SUCCESS', 'completed successfully'] : ['ERROR', "failed with exit code {$result->exitCode()}"];
+                    $message = sprintf("!%s! Building binary for {$binary['target']} %s.", ...$message);
+
+                    $spinner->setMessage($message);
+                    return $result;
+                }, "Building binary for {$binary['target']}");
+
+                $this->output->newLine();
 
                 if ($result->successful()) {
                     if (! blank($chmod = config('dev.build.chmod')) && is_string($chmod) && is_numeric($chmod) && strlen($chmod) === 4) {
@@ -277,30 +305,13 @@ class AppBuild extends Command implements SignalableCommandInterface
         return $this->option('dry-run');
     }
 
-    private function cleanUp(): AppBuild
+    private function cleanUp(bool $isSignal = false): AppBuild|int
     {
         if (File::exists(config('dev.build.app_version'))) {
             File::delete(config('dev.build.app_version'));
         }
 
-        return $this;
-    }
-
-    public function getSubscribedSignals(): array
-    {
-        if (defined('SIGINT')) {
-            return [\SIGINT];
-        }
-
-        return [];
-    }
-    public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
-    {
-        if (defined('SIGINT') && $signal === \SIGINT) {
-            $this->cleanUp();
-        }
-
-        return self::SUCCESS;
+        return $isSignal ? self::SUCCESS : $this;
     }
 
     public function __destruct()
