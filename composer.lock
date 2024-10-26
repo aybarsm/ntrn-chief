@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "21a0b6a94f971bdec1078bd23759ac37",
+    "content-hash": "f0a53d8a6ac94fca40cd8ab866705185",
     "packages": [
         {
             "name": "beberlei/assert",
@@ -8978,6 +8978,38 @@
             "time": "2023-02-07T11:34:05+00:00"
         },
         {
+            "name": "swoole/ide-helper",
+            "version": "5.1.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/swoole/ide-helper.git",
+                "reference": "e63299f488bf8332404ce4f80142a2ed1397edde"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/swoole/ide-helper/zipball/e63299f488bf8332404ce4f80142a2ed1397edde",
+                "reference": "e63299f488bf8332404ce4f80142a2ed1397edde",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Team Swoole",
+                    "email": "team@swoole.com"
+                }
+            ],
+            "description": "IDE help files for Swoole.",
+            "support": {
+                "issues": "https://github.com/swoole/ide-helper/issues",
+                "source": "https://github.com/swoole/ide-helper/tree/5.1.4"
+            },
+            "time": "2024-09-03T04:39:02+00:00"
+        },
+        {
             "name": "ta-tikoma/phpunit-architecture-test",
             "version": "0.8.4",
             "source": {
@@ -9089,26 +9121,14 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "swoole/ide-helper": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3.0",
-        "ext-ctype": "*",
-        "ext-curl": "*",
-        "ext-dom": "*",
-        "ext-fileinfo": "*",
-        "ext-filter": "*",
-        "ext-hash": "*",
-        "ext-mbstring": "*",
-        "ext-openssl": "*",
-        "ext-pcre": "*",
-        "ext-pdo": "*",
-        "ext-tokenizer": "*",
-        "ext-xml": "*",
-        "ext-phar": "*",
-        "ext-json": "*"
+        "php": "^8.3.0"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

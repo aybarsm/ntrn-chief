@@ -45,7 +45,7 @@ class GitHub
         return static::handleMatches($matches);
     }
 
-    public static function apiGet(string $url): \Illuminate\Http\Client\Response
+    public static function apiGet(string $url)
     {
         return Http::withHeaders([
             'Accept' => 'application/vnd.github+json',

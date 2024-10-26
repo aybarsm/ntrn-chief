@@ -32,7 +32,8 @@
         "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.15.2",
         "mockery/mockery": "^1.6.11",
-        "pestphp/pest": "^2.34.7"
+        "pestphp/pest": "^2.34.7",
+        "swoole/ide-helper": "@dev"
     },
     "autoload": {
         "psr-4": {

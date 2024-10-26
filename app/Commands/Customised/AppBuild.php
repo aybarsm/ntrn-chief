@@ -174,6 +174,10 @@ class AppBuild extends Command implements SignalableCommandInterface
                 $result = Process::run("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
 
                 if ($result->successful()) {
+                    if (! blank($chmod = config('dev.build.chmod')) && is_string($chmod) && is_numeric($chmod) && strlen($chmod) === 4) {
+                        File::chmod($binary['output'], octdec(config('dev.build.chmod')));
+                    }
+
                     $this->info("Binary is ready: {$binary['output']}");
                     continue;
                 }
