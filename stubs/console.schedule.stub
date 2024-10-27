@@ -3,7 +3,7 @@
 namespace {{ namespace }};
 
 use Illuminate\Console\Scheduling\Schedule;
-use App\Framework\Commands\Command;
+use LaravelZero\Framework\Commands\Command;
 
 class DummyClass extends Command
 {

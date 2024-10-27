@@ -67,12 +67,9 @@ class AppBuild extends Command implements SignalableCommandInterface
                 'sfx' => [
                     'local' => $microLocal,
                     'remote' => $microRemote,
+                    'isArchive' => ! blank($archivePattern) && Str::isMatch($archivePattern, $microRemote),
                 ],
             ];
-
-            if (! blank($archivePattern)) {
-                $binaries[$distribution]['sfx']['remoteArchive'] = Str::isMatch($archivePattern, $microRemote);
-            }
         }
 
         $this->config()->set("build.binaries", $binaries);
@@ -234,12 +231,10 @@ class AppBuild extends Command implements SignalableCommandInterface
             return true;
         }
 
-        $this->info("Downloading SFX file: {$binary['sfx']['remote']}");
-
         Pipeline::send($binary)
             ->through([
                 function ($binary, \Closure $next) {
-                    if (data_get('binary', 'sfx.remoteArchive', false) === true){
+                    if ($binary['sfx']['isArchive']){
                         $binary['sfx']['tempDir'] = join_paths(sys_get_temp_dir(), Str::uuid());
                         $binary['sfx']['tempFile'] = join_paths($binary['sfx']['tempDir'], basename($binary['sfx']['remote']));
                         File::ensureDirectoryExists($binary['sfx']['tempDir']);
@@ -247,11 +242,30 @@ class AppBuild extends Command implements SignalableCommandInterface
                     return $next($binary);
                 },
                 function ($binary, \Closure $next) {
-                    $sinkTo = $binary['sfx']['local'];
-                    if (data_get('binary', 'sfx.remoteArchive', false) === true){
-                        $sinkTo = $binary['sfx']['tempFile'] = join_paths($binary['sfx']['tempDir'], basename($binary['sfx']['remote']));
-                    }
+                    $sinkTo = $binary['sfx']['isArchive'] ? join_paths($binary['sfx']['tempDir'], basename($binary['sfx']['remote'])) : $binary['sfx']['local'];
 
+                    $progress = progress("Downloading...", -1, $binary['sfx']['remote']);
+
+                    Http::sink($sinkTo)->withOptions([
+                        'progress' => function ($dlSize, $dlCompleted) use($progress) {
+                            if ($progress->total === -1 && $dlSize > 0){
+                                $progress->total = $dlSize;
+                                $progress->start();
+                            }
+
+                            if ($progress->total > -1){
+                                if ($progress->progress < $dlCompleted) {
+                                    $progress->advance((int)$dlCompleted - (int)$progress->progress);
+                                }
+
+                                if ($progress->progress === $dlSize){
+                                    $progress->label('Download completed.');
+                                    $progress->render();
+                                    $progress->finish();
+                                }
+                            }
+                        }
+                    ])->get($binary['sfx']['remote']);
 
                     return $next($binary);
                 },
