@@ -6,7 +6,7 @@ use App\Traits\Configurable;
 
 trait Taskable
 {
-    use Configurable;
+    use Configurable, Indicatorable;
 
     protected function taskRun(string $title, $task = null, $loadingText = 'loading...'): bool
     {

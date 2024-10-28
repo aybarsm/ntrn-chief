@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
 
-use LaravelZero\Framework\Commands\Command;
+use App\Framework\Commands\Command;
 
 class DummyClass extends Command
 {

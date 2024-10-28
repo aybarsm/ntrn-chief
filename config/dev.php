@@ -1,6 +1,8 @@
 <?php
+use function Illuminate\Filesystem\join_paths;
 
 return (\Phar::running(false) ? [] : [
+    'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
     'build' => [
         'chmod' => '0775',
         'app_version' => config_path('app_version'),

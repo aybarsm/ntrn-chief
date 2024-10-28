@@ -35,21 +35,23 @@ class AppBuild extends Command implements SignalableCommandInterface
             $this->cleanUp(true);
         });
 
-        $this->config()->set('ts.instance', Carbon::now('UTC'));
-        $this->config()->set('ts.safe', $this->config()->get('ts.instance')->format('Ymd\THis\Z'));
-        $this->config()->set('name', Str::lower(config('app.name')));
-        $this->config()->set('version', config('app.version'));
+        $this->config('set', 'ts.instance', Carbon::now('UTC'));
+        $tsSafe = $this->config('get', 'ts.instance')->format('Ymd\THis\Z');
+        $this->config('set', 'ts.safe', $tsSafe);
 
-        if ($this->config()->get('version') === 'unreleased') {
+        $this->config('set', 'name', Str::lower(config('app.name')));
+        $this->config('set', 'version', config('app.version'));
+
+        if ($this->config('get', 'version') === 'unreleased') {
             $this->error('App has not released yet.');
             return;
         }
 
-        $this->config()->set('build', [
+        $this->config('set', 'build', [
             'initial' => $this->app->basePath($this->getBinary()).'.phar',
-            'id' => ($buildId = ($this->config()->get('version') . '-' . $this->config()->get('ts.safe'))),
+            'id' => ($buildId = ($this->config('get', 'version') . '-' . $this->config('get', 'ts.safe'))),
             'path' => ($buildPath = $this->app->buildsPath($buildId)),
-            'phar' => join_paths($buildPath, "{$this->config()->get('name')}.phar"),
+            'phar' => join_paths($buildPath, "{$this->config('get', 'name')}.phar"),
         ]);
 
         $microPath = config('dev.build.micro.path');
@@ -63,7 +65,7 @@ class AppBuild extends Command implements SignalableCommandInterface
 
             $binaries[$distribution] = [
                 'target' => $distribution,
-                'output' => join_paths($this->config()->get('build.path'), "{$this->config()->get('name')}-{$distribution}"),
+                'output' => join_paths($this->config('get', 'build.path'), "{$this->config('get', 'name')}-{$distribution}"),
                 'sfx' => [
                     'local' => $microLocal,
                     'remote' => $microRemote,
@@ -72,17 +74,17 @@ class AppBuild extends Command implements SignalableCommandInterface
             ];
         }
 
-        $this->config()->set("build.binaries", $binaries);
+        $this->config('set', "build.binaries", $binaries);
 
-        $this->config()->set('box', [
+        $this->config('set', 'box', [
             'binary' => join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box')),
         ]);
 
-        $this->config()->set('tasks', []);
+        $this->config('set', 'tasks', []);
 
         $this->title('Building process');
-        dump($this->config()->full());
-//        $this->build();
+
+
     }
 
 
@@ -90,7 +92,7 @@ class AppBuild extends Command implements SignalableCommandInterface
     private function nextTask(string $name, string $message): void
     {
         $slug = Str::slug($name, '_');
-        $tasks = $this->config()->set("tasks.{$slug}", $this->config()->get("tasks.{$slug}", -1) + 1);
+        $tasks = $this->config('set', "tasks.{$slug}", $this->config('get', "tasks.{$slug}", -1) + 1);
 
         $taskId = count($tasks) . '.' . ($tasks[$slug] > 0 ? $tasks[$slug] . '.' : '');
 
@@ -102,8 +104,8 @@ class AppBuild extends Command implements SignalableCommandInterface
         $this->nextTask('Prepare', 'Prepare the build environment');
 
         if (! $this->isDryRun()) {
-            File::ensureDirectoryExists($this->config()->get('build.path'));
-            File::put(config('dev.build.app_version'), $this->config()->get('version'));
+            File::ensureDirectoryExists($this->config('get', 'build.path'));
+            File::put(config('dev.build.app_version'), $this->config('get', 'version'));
         }
 
         return $this;
@@ -136,7 +138,7 @@ class AppBuild extends Command implements SignalableCommandInterface
 
         $this->withSpinner(1, function($spinner) {
             $process = Process::timeout($this->getTimeout())
-                ->command([$this->config()->get('box.binary'), 'compile'] + $this->getBoxOptions())
+                ->command([$this->config('get', 'box.binary'), 'compile'] + $this->getBoxOptions())
                 ->start();
 
             while($process->running()) {
@@ -154,13 +156,13 @@ class AppBuild extends Command implements SignalableCommandInterface
 
         $this->output->newLine();
 
-        if (! File::exists($this->config()->get('build.initial'))) {
+        if (! File::exists($this->config('get', 'build.initial'))) {
             throw new \RuntimeException('Failed to compile the application.');
         }else{
-            File::move($this->config()->get('build.initial'), $this->config()->get('build.phar'));
+            File::move($this->config('get', 'build.initial'), $this->config('get', 'build.phar'));
 
             $this->output->writeln(
-                sprintf('Compiled successfully: <fg=green>%s</>', $this->config()->get('build.phar'))
+                sprintf('Compiled successfully: <fg=green>%s</>', $this->config('get', 'build.phar'))
             );
         }
 
@@ -174,13 +176,13 @@ class AppBuild extends Command implements SignalableCommandInterface
 
         $this->nextTask('Binary', 'Prepare the distribution binaries');
 
-        foreach ($this->config()->get('build.binaries') as $binary) {
+        foreach ($this->config('get', 'build.binaries') as $binary) {
             if ($this->prepareSfx($binary)){
                 $this->nextTask('Binary', "Create binary for {$binary['target']}");
 
                 $result = $this->withSpinner(1, function($spinner) use($binary) {
                     $process = Process::timeout($this->getTimeout())
-                        ->start("cat {$binary['sfx']['local']} {$this->config()->get('build.phar')} > {$binary['output']}");
+                        ->start("cat {$binary['sfx']['local']} {$this->config('get', 'build.phar')} > {$binary['output']}");
 
                     while($process->running()) {
                         $spinner->setMaxSteps($spinner->getMaxSteps() + 1);
