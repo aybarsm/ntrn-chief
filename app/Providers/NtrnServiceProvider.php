@@ -17,6 +17,11 @@ class NtrnServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(IndicatorContract::class, Indicator::class);
+
+//        $this->app->whenHasAttribute(Commandtask::class, function (...$params){
+//            dump('asdasds');
+//            dump($params);
+//        });
     }
 
     public function boot(): void

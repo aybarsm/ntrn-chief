@@ -2,27 +2,35 @@
 
 namespace App\Prompts;
 
-use App\Traits\Prompt\Statable;
+use App\Traits\Configable;
+use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
 
 class Progress extends \Laravel\Prompts\Progress
 {
-    use Macroable, Conditionable, Statable;
-
-    public bool $autoFinish = true;
-    public bool $showPercentage = true;
-
-    public ?string $numberType = null;
-    public array $numberOptions = [];
-
-    public static array $defaultStates = [
-        'initial' => ['color' => 'blue', 'labelApply' => 'dim'],
-        'active' => ['color' => 'yellow', 'labelApply' => 'cyan'],
-        'submit' => ['color' => 'green', 'labelApply' => 'dim'],
-        'error' => ['color' => 'red', 'messageType' => 'error'],
-        'cancel' => ['color' => 'red', 'message' => 'Cancelled.', 'messageType' => 'warning'],
-        'default' => ['color' => 'yellow', 'labelApply' => 'cyan'],
+    use Macroable, Conditionable, Configable;
+    public static array $defaultConfig = [
+        'state' => [
+            'initial' => ['color' => 'blue', 'label' => ['method' => 'dim']],
+            'active' => ['color' => 'yellow', 'label' => ['method' => 'cyan']],
+            'submit' => ['color' => 'green', 'label' => ['method' => 'dim']],
+            'error' => ['color' => 'red', 'message' => ['method' => 'error']],
+            'cancel' => ['color' => 'red', 'message' => ['value' => 'Cancelled.', 'method' => 'warning']],
+            'default' => ['color' => 'yellow', 'label' => ['method' => 'cyan']],
+        ],
+        'auto' => [
+            'clear' => false,
+            'start' => true,
+            'finish' => true,
+        ],
+        'number' => [
+            'type' => null,
+            'options' => [],
+        ],
+        'show' => [
+            'percentage' => true,
+        ],
     ];
 
     public function __construct(public string $label = '', public iterable|int $steps = 0, public string $hint = '')
@@ -35,13 +43,59 @@ class Progress extends \Laravel\Prompts\Progress
             $this->total = $steps;
         }
 
-        foreach(['label' => $label, 'hint' => $hint] as $stateEntry => $entryValue){
+        foreach(['label' => $label, 'hint' => $hint] as $entryType => $entryValue){
             if (! blank($entryValue)){
-                static::$defaultStates['default'][$stateEntry] = $entryValue;
+                data_set(static::$defaultConfig, "state.default.{$entryType}.value", $entryValue);
             }
         }
 
-        $this->setStates(static::$defaultStates);
+        $this->configables = static::$defaultConfig;
+    }
+
+    protected function setConf(string $prefix, string $path, mixed $value): static
+    {
+        $path = Str::of($path)->trim()->trim('.')->start("{$prefix}.")
+            ->when(
+                fn ($str) => $str->value() == "{$prefix}.",
+                fn ($str) => $str->rtrim('.')
+            )->value();
+
+        $this->config('set', $path, $value);
+
+        return $this;
+    }
+
+    public function conf(string|array $path, mixed $default = null): mixed
+    {
+        return $this->config('get', $path, $default);
+    }
+
+    public function state(string $path, mixed $value): static
+    {
+        $this->setConf(__FUNCTION__, $path, $value);
+
+        return $this;
+    }
+
+    public function auto(string $path, mixed $value): static
+    {
+        $this->setConf(__FUNCTION__, $path, $value);
+
+        return $this;
+    }
+
+    public function number(string $path, mixed $value): static
+    {
+        $this->setConf(__FUNCTION__, $path, $value);
+
+        return $this;
+    }
+
+    public function show(string $path, mixed $value): static
+    {
+        $this->setConf(__FUNCTION__, $path, $value);
+
+        return $this;
     }
 
     public function total(int $total): static
@@ -92,16 +146,24 @@ class Progress extends \Laravel\Prompts\Progress
 
     public function advance(int $step = 1): void
     {
+        if ($this->conf('auto.start') === true && $this->state == 'initial' && $this->progress == 0 && $step > 0){
+            $this->start();
+        }
+
         $this->progress += $step;
 
         if ($this->progress > $this->total) {
             $this->progress = $this->total;
         }
 
-        if ($this->autoFinish && $this->progress === $this->total){
+        if ($this->conf('auto.finish') === true && $this->progress === $this->total){
             $this->finish();
         }else {
             $this->render();
+        }
+
+        if ($this->conf('auto.clear') === true && $this->progress === $this->total){
+            $this->clear();
         }
     }
 

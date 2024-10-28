@@ -3,38 +3,38 @@
 namespace App\Prompts;
 
 use Illuminate\Support\Number;
-
 class ProgressRenderer extends \Laravel\Prompts\Themes\Default\ProgressRenderer
 {
     protected string $barCharacter = '█';
+
     public function __invoke(\App\Prompts\Progress|\Laravel\Prompts\Progress $progress): string
     {
         $completed = $progress->progress;
         $total = $progress->total;
 
-        if ($progress->numberType !== null && method_exists(Number::class, $progress->numberType)){
-            $completed = Number::{$progress->numberType}($completed, ...$progress->numberOptions);
-            $total = Number::{$progress->numberType}($total, ...$progress->numberOptions);
+        $numberType = $progress->conf('number.type', null);
+        $numberOptions = $progress->conf('number.options', []);
+
+        if ($numberType !== null && method_exists(Number::class, $numberType)){
+            $completed = Number::{$numberType}($completed, ...$numberOptions);
+            $total = Number::{$numberType}($total, ...$numberOptions);
         }
 
-        $hint = $progress->getState("{$progress->state}.hint", $progress->hint);
-        $info = $progress->getState("{$progress->state}.info", "{$completed} / {$total}");
-        $color = $progress->getState("{$progress->state}.color", 'yellow');
+        $hint = $progress->conf(["state.{$progress->state}.hint.value", 'state.default.hint.value'], $progress->hint);
+        $info = $progress->conf(["state.{$progress->state}.info.value", 'state.default.info.value'], "{$completed} / {$total}");
+        $color = $progress->conf(["state.{$progress->state}.color", 'state.default.color'], 'yellow');
 
-        $message = $progress->getState("{$progress->state}.message", null, false);
-        $messageType = $progress->getState("{$progress->state}.messageType", null, false);
-        $messageEligible = $message !== null && $messageType !== null && method_exists($this, $messageType);
-
-        $label = $progress->getState("{$progress->state}.label", $progress->label);
-//        $label = $progress->showPercentage ? $label.' (' . number_format($progress->percentage() * 100, 2) . '%)' : $label;
-        $label = $progress->showPercentage ? $label . ' ' . round($progress->percentage() * 100) . '%' : $label;
-
-        $label = $this->truncate($label, $progress->terminal()->cols() - 6);
-        $labelApply = $progress->getState("{$progress->state}.labelApply", null, false);
-
-        if ($labelApply !== null && method_exists($this, $labelApply)){
-            $label = $this->{$labelApply}($label);
+        $label = $progress->conf(["state.{$progress->state}.label.value", 'state.default.label.value'], $progress->label);
+        $showPercentage = $progress->conf('show.percentage', true);
+        $label = $showPercentage ? $label . ' ' . round($progress->percentage() * 100) . '%' : $label;
+        $labelMethod = $progress->conf(["state.{$progress->state}.label.method", 'state.default.label.method'], 'cyan');
+        if ($labelMethod !== null && method_exists($this, $labelMethod)){
+            $label = $this->{$labelMethod}($label);
         }
+
+        $message = $progress->conf(["state.{$progress->state}.message.value", 'state.default.message.value'], null);
+        $messageMethod = $progress->conf(["state.{$progress->state}.message.method", 'state.default.message.method'], null);
+        $messageEligible = $message !== null && $messageMethod !== null && method_exists($this, $messageMethod);
 
         $filled = str_repeat($this->barCharacter, (int) ceil($progress->percentage() * min($this->minWidth, $progress->terminal()->cols() - 6)));
         $filled = $this->dim($filled);
@@ -50,7 +50,7 @@ class ProgressRenderer extends \Laravel\Prompts\Themes\Default\ProgressRenderer
             fn () => $this->newLine() // Space for errors
         )->when(
             $messageEligible,
-            fn () => $this->{$messageType}($message),
+            fn () => $this->{$messageMethod}($message),
         );
 
 //        return match ($progress->state) {
