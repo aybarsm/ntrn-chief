@@ -2,37 +2,33 @@
 
 namespace App\Prompts;
 
+use App\Traits\ConfigableOpen;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
-
-class Spinner extends \Laravel\Prompts\Spinner
+use Laravel\Prompts\Spinner as LaravelSpinner;
+class Spinner extends LaravelSpinner
 {
-    use Macroable, Conditionable;
-
-    public function spin(\Closure $callback): mixed
-    {
-        $this->state = 'active';
-
-        $result = parent::spin($callback);
-
-        $this->state = 'submit';
-
-        return $result;
-    }
+    use Macroable, Conditionable, ConfigableOpen;
 
     protected function eraseRenderedLines(): void
     {
-        $lines = explode(PHP_EOL, $this->prevFrame);
-        $this->moveCursor(-999, -count($lines) + 1);
-        $this->eraseDown();
+        if ($this->state === 'submit') {
+            return;
+        }
+
+        parent::eraseRenderedLines();
+    }
+
+    public function clear(): void
+    {
+        $this->eraseRenderedLines();
     }
 
     protected function resetTerminal(bool $originalAsync): void
     {
-        pcntl_async_signals($originalAsync);
-        pcntl_signal(SIGINT, SIG_DFL);
+        parent::resetTerminal($originalAsync);
 
-        $this->eraseRenderedLines();
+        $this->state = 'submit';
     }
 
     public function message(string $message): static

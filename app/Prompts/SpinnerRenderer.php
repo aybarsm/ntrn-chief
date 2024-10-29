@@ -3,8 +3,8 @@
 namespace App\Prompts;
 
 use App\Prompts\Spinner;
-
-class SpinnerRenderer extends \Laravel\Prompts\Themes\Default\SpinnerRenderer
+use Laravel\Prompts\Themes\Default\SpinnerRenderer as LaravelSpinnerRenderer;
+class SpinnerRenderer extends LaravelSpinnerRenderer
 {
     protected array $frames = ['⠏', '⠛', '⠹', '⢸', '⣰', '⣤', '⣆', '⡇'];
 
@@ -28,7 +28,6 @@ class SpinnerRenderer extends \Laravel\Prompts\Themes\Default\SpinnerRenderer
     public function __invoke(Spinner|\Laravel\Prompts\Spinner $spinner): string
     {
         return match ($spinner->state) {
-
             default => $this->defaultSpinner($spinner),
         };
     }

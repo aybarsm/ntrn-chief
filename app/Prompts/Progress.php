@@ -6,8 +6,8 @@ use App\Traits\Configable;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
-
-class Progress extends \Laravel\Prompts\Progress
+use Laravel\Prompts\Progress as LaravelProgress;
+class Progress extends LaravelProgress
 {
     use Macroable, Conditionable, Configable;
     public static array $defaultConfig = [

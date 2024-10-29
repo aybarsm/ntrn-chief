@@ -3,7 +3,8 @@
 namespace App\Prompts;
 
 use Illuminate\Support\Number;
-class ProgressRenderer extends \Laravel\Prompts\Themes\Default\ProgressRenderer
+use Laravel\Prompts\Themes\Default\ProgressRenderer as LaravelProgressRenderer;
+class ProgressRenderer extends LaravelProgressRenderer
 {
     protected string $barCharacter = '█';
 
