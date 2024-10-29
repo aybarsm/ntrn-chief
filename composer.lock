@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "57044a0873d7f3e9974c27c4040f99d6",
+    "content-hash": "a53b0309d34d6d6f1dc8842cff290aae",
     "packages": [
         {
             "name": "beberlei/assert",
@@ -4540,64 +4540,6 @@
                 "source": "https://github.com/php-fig/simple-cache/tree/3.0.0"
             },
             "time": "2021-10-29T13:26:27+00:00"
-        },
-        {
-            "name": "rahul900day/laravel-console-spinner",
-            "version": "1.1.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/RahulDey12/laravel-console-spinner.git",
-                "reference": "2bf4dc7478175e7c0d5365b660ef4ca30f7c09f4"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/RahulDey12/laravel-console-spinner/zipball/2bf4dc7478175e7c0d5365b660ef4ca30f7c09f4",
-                "reference": "2bf4dc7478175e7c0d5365b660ef4ca30f7c09f4",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/console": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
-                "illuminate/support": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
-                "php": "^7.3|^8.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Rahul900Day\\LaravelConsoleSpinner\\LaravelConsoleSpinnerServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Rahul900Day\\LaravelConsoleSpinner\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Rahul Dey",
-                    "email": "rahul900day@gmail.com"
-                }
-            ],
-            "description": "Laravel Console Spinner is a spinner output for Laravel command line.",
-            "keywords": [
-                "artisan",
-                "cli",
-                "command-line",
-                "console",
-                "laravel",
-                "php",
-                "symfony"
-            ],
-            "support": {
-                "issues": "https://github.com/RahulDey12/laravel-console-spinner/issues",
-                "source": "https://github.com/RahulDey12/laravel-console-spinner/tree/1.1.2"
-            },
-            "time": "2024-02-29T08:20:52+00:00"
         },
         {
             "name": "ralouphie/getallheaders",

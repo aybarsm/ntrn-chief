@@ -22,6 +22,7 @@ class Indicator implements IndicatorContract
         $this->indicator = match ($type) {
             IndicatorType::SPINNER => new Spinner(...$options),
             IndicatorType::PROGRESS => new Progress(...$options),
+            default => throw new \InvalidArgumentException("Invalid indicator type [{$type->value}]"),
         };
     }
 
