@@ -7,32 +7,25 @@ use Illuminate\Support\Str;
 /** @mixin \Illuminate\Console\Command */
 class CommandMixin
 {
-    public static function task(): \Closure
+    public static function forgetTask(): \Closure
     {
-        return function (string $title, $task = null, $indicator = null): string
+        return function (): void
         {
-            $spinTitle = Str::of($title)->start('<info>')->finish('</info>')->value();
-
-            if ($task === null) {
-                $result = true;
-            } else {
-                try {
-//                    $spinner = new \App\Framework\Prompts\Spinner($spinTitle);
-//                    $result = $spinner->spin(fn () => $task()) === false ? false : true;
-                } catch (\Throwable $taskException) {
-                    $result = false;
-                }
+            if (static::hasMacro('task')) {
+                unset(static::$macros['task']);
             }
-
-            $this->output->writeln(
-                "$title: ".($result ? '<info>✔</info>' : '<error>failed</error>')
-            );
-
-            if (isset($taskException)) {
-                throw $taskException;
+            if (static::hasMacro('forgetTask')) {
+                unset(static::$macros['forgetTask']);
             }
-
-            return $result;
         };
     }
+//    public static function forgetMacro(): \Closure
+//    {
+//        return function (string $macro): void
+//        {
+//            if (static::hasMacro($macro)) {
+//                unset(static::$macros[$macro]);
+//            }
+//        };
+//    }
 }

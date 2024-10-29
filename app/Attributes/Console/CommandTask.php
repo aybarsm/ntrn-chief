@@ -2,19 +2,17 @@
 
 namespace App\Attributes\Console;
 
-use Attribute;
 use App\Enums\IndicatorType;
+use Attribute;
 
-#[Attribute(Attribute::TARGET_METHOD)]
+#[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class CommandTask
 {
     public function __construct(
-        public int $order,
-        public string $title,
+        public string $method,
         public ?IndicatorType $indicatorType = null,
-        public ?string $method = null,
+        public string $title = '',
     )
     {
-
     }
 }

@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use App\Framework\Commands\TaskingCommand;
+use App\Attributes\Console\CommandTask;
+use App\Enums\IndicatorType;
+
+class DummyClass extends TaskingCommand
+{
+    protected $signature = '{{ command }}';
+    protected $description = 'Command description';
+
+    public function handle()
+    {
+        //
+    }
+}
