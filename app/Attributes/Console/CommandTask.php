@@ -2,22 +2,22 @@
 
 namespace App\Attributes\Console;
 
-use App\Enums\IndicatorType;
 use Attribute;
-use Illuminate\Contracts\Container\Container;
-use Illuminate\Contracts\Container\ContextualAttribute;
+use App\Enums\IndicatorType;
+
+//use Illuminate\Contracts\Container\Container;
 
 #[Attribute(Attribute::TARGET_METHOD)]
-class CommandTask implements ContextualAttribute
+class CommandTask
 {
     public function __construct(public int $order, public string $title, public ?IndicatorType $indicator = null)
     {
 
     }
 
-    public static function resolve(self $attribute, Container $container)
-    {
-        dump('Commandtask::resolve');
-        return [];
-    }
+//    public static function resolve(self $attribute, Container $container)
+//    {
+//        dump('Commandtask::resolve');
+//        return [];
+//    }
 }
