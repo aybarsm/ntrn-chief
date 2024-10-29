@@ -68,35 +68,7 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
             $cursor->savePosition();
 
             $this->currentTask = $taskId;
-            $this->output->section("Task [$taskId] {$task->title} : Started");
-            $this->output->success("Task [$taskId] {$task->title} : Completed");
-            $this->output->error("Task [$taskId] {$task->title} : Failed");
-
-//            $note = new Note(
-//                message: "Task [$taskId] {$task->title} : Started",
-//                type: 'intro',
-//            );
-//            $note->display();
-//            $note->clear();
-//
-//            return;
-
-//            info("BEGIN Lines: {$this->output->newLinesWritten()}");
-//            $this->output->write("$title: <comment>{$loadingText}</comment>");
-//            [$this->currentCursorX, $this->currentCursorY] = $this->cursor->getCurrentPosition();
-//            info("Task [$taskId]: Begin", [$this->currentCursorX, $this->currentCursorY]);
-//            $this->
-//            $this->output->write("Task [$taskId] <comment>{$task->title}</comment> : Started");
-//            $this->output->writeln('');
-//            $this->getOutput()->writeDirectly();
-//            $this->output->section("Task [$taskId] {$task->title} : Started");
-//            $this->output->writeln("Task [$taskId] {$task->title} : Started");
-//            $this->newLine();
-//            $this->info("Task [$taskId]: Started");
-//            $this->newLine();
-//            sleep(1);
-//            $this->output->write("Task [$taskId]: <comment>{$task->title}</comment>");
-//            $this->info("Task [$taskId]: <comment>{$task->title}</comment>");
+            $this->output->writeln("Task [{$taskId}] {$task->title}: <comment>Running...</comment>");
 
             $this->indicator = match($task->indicatorType) {
                 IndicatorType::SPINNER => new Spinner(message: $task->title),
@@ -104,42 +76,17 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
                 default => null,
             };
 
-//            dump($this->indicator);
-//
-////            $this->indicator->config('set', 'pre.message', "Task [$taskId] [{$task->title}] : Started");
-//
             $result = match($task->indicatorType) {
                 IndicatorType::SPINNER => $this->indicator->spin(fn () => $this->{$task->method}()),
-                default => null,
+                default =>  $this->{$task->method}(),
             };
 
-//            $note->clear();
-//            $note->message = "Task [$taskId] {$task->title} : Completed";
-//            $note->type = 'outro';
-//            $note->display();
+            $cursor->restorePosition();
+            $cursor->clearOutput();
 
-//            info("BEGIN END: {$this->output->newLinesWritten()}");
-//            dump($this->indicator);
-
-//
-//            $this->info("Task [$taskId]: Completed");
-//            $this->indicator->eraseRenderedLines();
-
-//            dump($this->indicator);
-
-//            $this->cursor = $this->cursor->moveToPosition(1, $this->currentCursorY);
-//            $this->cursor = $this->cursor->clearLineAfter();
-//            $this->info("Task [$taskId]: Completed");
-//            $this->newLine();
-//            info("Task [$taskId]: End", [$this->currentCursorX, $this->currentCursorY]);
-//            $this->cursor->clearLine();
-
-//            $this->indicator = $this->getIndicator($task->indicator);
-//            $this->indicator->start($task->title);
-//
-//            $this->{$task->method}();
-//
-//            $this->indicator->finish();
+            $this->output->writeln(
+                "Task [{$taskId}] {$task->title}: ".($result ? '<info>✔</info>' : '<error>failed</error>')
+            );
         }
     }
 
