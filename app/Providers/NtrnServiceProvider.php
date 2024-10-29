@@ -2,10 +2,8 @@
 
 namespace App\Providers;
 
-use App\Attributes\Console\CommandTaskList;
-use App\Contracts\Console\TaskingCommandContract;
 use App\Contracts\Services\Console\IndicatorContract;
-use App\Framework\Commands\TaskingCommand;
+use App\Attributes\Console\TaskingCommand;
 use App\Services\Console\Indicator;
 use App\Services\Ntrn;
 use Illuminate\Support\Facades\App;
@@ -20,16 +18,19 @@ class NtrnServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(IndicatorContract::class, Indicator::class);
-        $this->app->bind(TaskingCommandContract::class, TaskingCommand::class);
-
-        $this->app->resolving(TaskingCommandContract::class, function (...$params) {
-            dump('TaskingCommandContract::resolving');
-            dump($params);
+        $this->app->whenHasAttribute('TaskingCommad', function (...$params) {
+            dump('TaskingCommand::whenHasAttribute');
         });
-
-        $this->app->resolving(CommandTaskList::class, function ($attribute, $app) {
-            dump('CommandTaskList::resolving');
-        });
+//        $this->app->bind(TaskingCommandContract::class, TaskingCommand::class);
+//
+//        $this->app->resolving(TaskingCommandContract::class, function (...$params) {
+//            dump('TaskingCommandContract::resolving');
+//            dump($params);
+//        });
+//
+//        $this->app->resolving(CommandTaskList::class, function ($attribute, $app) {
+//            dump('CommandTaskList::resolving');
+//        });
 
 //        $this->app->resolving(function ($object, $app) {
 //            $reflectionClass = new \ReflectionClass($object);
