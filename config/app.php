@@ -10,5 +10,8 @@ return [
         Illuminate\Pipeline\PipelineServiceProvider::class,
         App\Providers\NtrnServiceProvider::class,
     ],
+    'auto' => [
+        'update' => (bool) env('APP_AUTO_UPDATE', false),
+    ],
     'key' => env('APP_KEY'),
 ];
