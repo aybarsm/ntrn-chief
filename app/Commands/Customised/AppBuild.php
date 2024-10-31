@@ -11,8 +11,10 @@ use App\Traits\Configable;
 use Illuminate\Console\Application as Artisan;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Psr\Http\Message\ResponseInterface;
@@ -20,7 +22,7 @@ use function Illuminate\Filesystem\join_paths;
 
 use App\Attributes\Console\CommandTask;
 
-#[CommandTask('setParameters', null, 'Set Build Parameters', true)]
+#[CommandTask('setParameters', null, 'Set build parameters', true)]
 #[CommandTask('prepare', null, 'Prepare compile environment', true)]
 #[CommandTask('compile', IndicatorType::SPINNER, 'Compile .phar file', true)]
 #[CommandTask('checkDistributions', IndicatorType::SPINNER, 'Check distributions', false, true)]
@@ -31,29 +33,95 @@ class AppBuild extends TaskingCommand
 {
     use Configable;
 
+    protected string $configablePrefix = 'build';
+
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
-    {--b|box=* : Extra options to pass to Box}';
+    {--b|box=* : Extra options to pass to Box}
+    {--leave-initial : Don\'t rename/move the initial .phar file after compiling}
+    {--no-distributions : Skip building distributions}';
 
     protected $description = 'Build a single file executable (Customised)';
 
-    public function handle (): void
-    {
-        $this->executeTasks();
-    }
-
-    protected function setParameters(): bool
+    public function handle(): void
     {
         $this->setSignalHandler('SIGINT', function () {
             $this->cleanUp(true);
         });
 
+        $this->executeTasks();
+    }
+
+    protected function restoreBackups(): void
+    {
+        $buildId = $this->config('get', 'id', 'Unknown');
+        $historyPath = $this->config('get', 'backup.history');
+        if (! File::exists($historyPath)){
+            return;
+        }
+
+        $history = collect(File::json($historyPath))->sortByDesc('ts')->toArray();
+        $newHistory = $history;
+
+        foreach($history as $histKey => $backup){
+            if (File::exists($backup['src'])){
+                Log::info("Build [{$buildId}] : Backup restore skipped. Backup destination (Source) already exists.", $backup);
+                continue;
+            }elseif (! File::exists($backup['dest'])){
+                Log::info("Build [{$buildId}] : Backup restore skipped. Backup source (Destination) does not exist.", $backup);
+                continue;
+            }
+
+            $result = $backup['isDir'] ? File::moveDirectory($backup['dest'], $backup['src']) : File::move($backup['dest'], $backup['src']);
+
+            if ($result) {
+                unset($newHistory[$histKey]);
+                File::put($historyPath, json_encode(array_values($newHistory), JSON_PRETTY_PRINT));
+                Log::info("Build [{$buildId}] : Backup restored.", $backup);
+            }else {
+                Log::error("Build [{$buildId}] : Backup restore failed.", $backup);
+            }
+        }
+    }
+
+    protected function backup(string $historyPath, string $src, string $dest, string $ts, string $buildId): bool
+    {
+        if (! File::exists($src)){
+            $this->setTaskMessage("<error>Source file/directory does not exist at {$src}</error>");
+            return false;
+        }
+
+        if (! File::exists($historyPath)){
+            File::ensureDirectoryExists(dirname($historyPath));
+            File::put($historyPath, '[]');
+            $history = [];
+        }else {
+            $history = File::json($historyPath);
+        }
+
+        File::ensureDirectoryExists(dirname($dest));
+        $result = $isDir = File::isDirectory($src) ? File::moveDirectory($src, $dest) : File::move($src, $dest);
+
+        if ($result){
+            $history[] = ['build' => $buildId, 'ts' => $ts, 'src' => $src, 'dest' => $dest, 'isDir' => File::isDirectory($src)];
+            File::put($historyPath, json_encode($history, JSON_PRETTY_PRINT));
+            $this->setTaskMessage("<info>Backup of {$src} to {$dest} was successful.</info>");
+        }else {
+            $this->setTaskMessage("<error>Backup of {$src} to {$dest} failed.</error>");
+        }
+
+        return $result;
+    }
+
+    protected function setParameters(): bool
+    {
         $config = [];
         $config['ts.instance'] = Carbon::now('UTC');
         $config['ts.safe'] = $config['ts.instance']->format('Ymd\THis\Z');
         $config['name'] = Str::lower(config('app.name'));
         $config['version'] = config('app.version');
         $config['backup.path'] = joinPaths(config('dev.build.backup.path'), "{$config['version']}-{$config['ts.safe']}");
+        $config['backup.history'] =  joinPaths(config('dev.build.backup.path'), 'history.json');
 
         foreach(config('dev.build.exclude', []) as $excludeKey => $exclude){
             $excBase = Str::of($exclude)
@@ -68,22 +136,30 @@ class AppBuild extends TaskingCommand
             return false;
         }
 
-        $config['build.initial'] = join_paths(base_path(), "{$this->getBinary()}.phar");
-        $config['build.id'] = "{$config['version']}-{$config['ts.safe']}";
-        $config['build.path'] = join_paths(config('dev.build.path'), $config['build.id']);
-        $config['build.phar'] = join_paths($config['build.path'], "{$config['name']}.phar");
+        $config['initial'] = join_paths(base_path(), "{$this->getBinary()}.phar");
+        $config['id'] = "{$config['version']}-{$config['ts.safe']}";
+        $config['path'] = join_paths(config('dev.build.path'), $config['id']);
+        $config['phar'] = join_paths($config['path'], "{$config['name']}.phar");
+
+        $config['box.binary'] = join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box'));
+
+        if ($this->option('no-distributions')){
+            $this->setTaskMessage("<comment>Skipping distributions.</comment>");
+            $this->configables['build'] = Arr::undot($config);
+            return true;
+        }
 
         $microPath = config('dev.build.micro.path');
         $microUrl = Str::of(config('dev.build.micro.url'))->trim()->finish('/');
         $microArchivePattern = config('dev.build.micro.archivePattern', '');
 
         foreach (config('dev.build.micro.distributions', []) as $distribution => $micro) {
-            $cnfKey = 'build.distributions.' . Str::replace('.', '_', $distribution);
+            $cnfKey = 'distributions.' . Str::replace('.', '_', $distribution);
 
             $micro['remote'] = Str::of($micro['remote'])->trim()->ltrim('/')->value();
 
             $config["{$cnfKey}.target"] = $distribution;
-            $config["{$cnfKey}.output"] = join_paths($config['build.path'], "{$config['name']}_{$distribution}");
+            $config["{$cnfKey}.output"] = join_paths($config['path'], "{$config['name']}_{$distribution}");
             $config["{$cnfKey}.sfx.local"] = join_paths($microPath, $micro['local']);
             $config["{$cnfKey}.sfx.localExists"] = File::exists($config["{$cnfKey}.sfx.local"]);
             $config["{$cnfKey}.sfx.remote"] = $microUrl->finish($micro['remote'])->value();
@@ -100,27 +176,28 @@ class AppBuild extends TaskingCommand
             $config["{$cnfKey}.sfx.extractDir"] = join_paths(config('dev.temp'), Str::uuid());
         }
 
-        $config['box.binary'] = join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box'));
+        $this->configables['build'] = Arr::undot($config);
 
-        $this->configables = Arr::undot($config);
-
-        dump($this->configables);
-
-        return false;
+        return true;
     }
 
     protected function prepare(): bool
     {
-        foreach(config('dev.build.exclude', []) as $excludeKey => $exclude){
-            $this->setTaskMessage("<comment>Excluding: {$exclude}</comment>");
-        }
-        return false;
-    }
+        $backupItems = $this->config('get', 'backup.items', []);
 
-    protected function compile(): bool
-    {
-        $initial = $this->config('get', 'build.initial');
-        $phar = $this->config('get', 'build.phar');
+        if (! blank($backupItems)){
+            $ts = $this->config('get', 'ts.instance')->toIso8601ZuluString();
+            $buildId = $this->config('get', 'id');
+            $historyPath = $this->config('get', 'backup.history');
+
+            foreach($backupItems as $item){
+                if (! $this->backup($historyPath, $item['src'], $item['dest'], $ts, $buildId)){
+                    return false;
+                }
+            }
+        }
+
+        $initial = $this->config('get', 'initial');
         $boxDump = join_paths(dirname($initial), '.box_dump');
 
         if (File::exists($boxDump) && File::isDirectory($boxDump)){
@@ -134,6 +211,19 @@ class AppBuild extends TaskingCommand
         }
 
         File::put(config('dev.build.app_version'), $this->config('get', 'version'));
+        $this->setTaskMessage("<comment>app_version file created.</comment>");
+
+        foreach(config('dev.build.exclude', []) as $excludeKey => $exclude){
+            $this->setTaskMessage("<comment>Excluding: {$exclude}</comment>");
+        }
+
+        return true;
+    }
+
+    protected function compile(): bool
+    {
+        $initial = $this->config('get', 'initial');
+        $phar = $this->config('get', 'phar');
 
         $process = Process::timeout($this->getTimeout())
             ->command([$this->config('get', 'box.binary'), 'compile'] + $this->getBoxOptions())
@@ -143,9 +233,12 @@ class AppBuild extends TaskingCommand
 
         if ($process->successful()){
             if ($initFile) {
-                File::ensureDirectoryExists(dirname($phar));
-                File::move($initial, $phar);
-                $this->setTaskMessage("<info>Compile was successful and output is at {$phar}</info>");
+                $actualOutput = $this->option('leave-initial') ? $initial : $phar;
+                if (! $this->option('leave-initial')) {
+                    File::ensureDirectoryExists(dirname($phar));
+                    File::move($initial, $phar);
+                }
+                $this->setTaskMessage("<info>Compile was successful and output is at {$actualOutput}</info>");
             }else {
                 $this->setTaskMessage("<comment>Compile was successful but initial output does not exist at {$initial}</comment>");
             }
@@ -158,7 +251,7 @@ class AppBuild extends TaskingCommand
 
     protected function checkDistributions(): bool|null
     {
-        $distributions = $this->config('get', 'build.distributions', []);
+        $distributions = $this->config('get', 'distributions', []);
         if (count($distributions) == 0){
             $this->setTaskMessage("<comment>No distributions to check.</comment>");
             return null;
@@ -175,7 +268,7 @@ class AppBuild extends TaskingCommand
 
     protected function downloadSfx(): bool
     {
-        $distributions = $this->config('get', 'build.distributions', []);
+        $distributions = $this->config('get', 'distributions', []);
 
         foreach($distributions as $distribution){
             $sfx = $distribution['sfx'];
@@ -214,7 +307,7 @@ class AppBuild extends TaskingCommand
     }
     protected function extractSfx(): bool
     {
-        $distributions = $this->config('get', 'build.distributions', []);
+        $distributions = $this->config('get', 'distributions', []);
 
         foreach($distributions as $distribution){
             $sfx = $distribution['sfx'];
@@ -250,7 +343,7 @@ class AppBuild extends TaskingCommand
             }else {
                 File::ensureDirectoryExists(dirname($sfx['local']));
                 File::move($extractedSfx, $sfx['local']);
-                $this->config('set', "build.distributions.{$distribution['target']}.sfx.localExists", true);
+                $this->config('set', "distributions.{$distribution['target']}.sfx.localExists", true);
                 $this->setTaskMessage("<info>{$distribution['target']} Sfx archive extracted successfully to {$sfx['local']}</info>");
             }
         }
@@ -260,8 +353,9 @@ class AppBuild extends TaskingCommand
 
     protected function buildBinaries(): bool
     {
-        $distributions = $this->config('get', 'build.distributions');
-        $phar = $this->config('get', 'build.phar');
+        $distributions = $this->config('get', 'distributions');
+        $pharKey = $this->option('leave-initial') ? 'initial' : 'phar';
+        $phar =  $this->config('get', $pharKey);
 
         foreach($distributions as $distribution) {
             $sfx = $distribution['sfx'];
@@ -334,11 +428,13 @@ class AppBuild extends TaskingCommand
             File::delete(config('dev.build.app_version'));
         }
 
-        foreach($this->config('get', 'build.distributions', []) as $distribution){
+        foreach($this->config('get', 'distributions', []) as $distribution){
             if (File::exists($distribution['sfx']['extractDir'])){
                 File::deleteDirectory($distribution['sfx']['extractDir']);
             }
         }
+
+        $this->restoreBackups();
 
         return $isSignal ? self::SUCCESS : $this;
     }

@@ -4,14 +4,11 @@
         {
             "in": ["app", "bootstrap", "config", "resources", "database"],
             "notName": ["*.bak*"]
-        },
-        {
-            "name": "composer.json",
-            "in": "."
         }
     ],
     "force-autodiscovery": true,
     "exclude-dev-files": true,
+    "exclude-composer-files": false,
     "compression": "GZ",
     "compactors": [
         "KevinGH\\Box\\Compactor\\Php",

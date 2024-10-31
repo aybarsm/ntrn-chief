@@ -17,8 +17,13 @@ return [
 //        Illuminate\Foundation\Console\VendorPublishCommand::class,
 //        LaravelZero\Framework\Commands\StubPublishCommand::class,
     ],
-    'remove' => [
-        LaravelZero\Framework\Commands\MakeCommand::class,
-        LaravelZero\Framework\Commands\BuildCommand::class,
-    ],
+    'remove' => (\Phar::running(false) ? [
+            App\Commands\Customised\AppBuild::class,
+            App\Commands\Customised\MakeCommand::class,
+        ] : [
+
+        ]) + [
+            LaravelZero\Framework\Commands\MakeCommand::class,
+            LaravelZero\Framework\Commands\BuildCommand::class,
+        ],
 ];
