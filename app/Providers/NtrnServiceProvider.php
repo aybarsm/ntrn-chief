@@ -7,6 +7,7 @@ use App\Attributes\Console\CommandTask;
 use App\Services\Console\Indicator;
 use App\Services\Ntrn;
 use Illuminate\Console\Command;
+use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,7 +26,7 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-
+//        Logger::setTimezone('');
     }
 
     protected function registerMixins(): void

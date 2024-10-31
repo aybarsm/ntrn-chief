@@ -6,6 +6,7 @@ return [
     'name' => 'NTRN',
     'version' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_version'))) : app('git.version')),
     'env' => (Helper::isPhar() ? 'production' : 'local'),
+    'timezone' => 'UTC',
     'providers' => [
         App\Providers\AppServiceProvider::class,
         Illuminate\Translation\TranslationServiceProvider::class,

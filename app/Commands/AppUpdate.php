@@ -12,8 +12,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use LaravelZero\Framework\Commands\Command;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
+
 class AppUpdate extends Command
 {
     use Configable;
@@ -23,29 +22,34 @@ class AppUpdate extends Command
     protected ?TransferStats $stats = null;
     protected ?Response $response = null;
 
-    protected function logException(ConnectionException|RequestException $e): void
+    protected function logException(\Exception $e): void
     {
-        Log::withContext([
-            'exception' => $e,
-            'request' => $this->request,
-            'stats' => $this->stats,
-            'response' => $this->response
-        ]);
+//        Log::withContext([
+//            'exception' => $e,
+//            'request' => $this->request,
+//            'stats' => $this->stats,
+//            'response' => $this->response
+//        ]);
 
         $log['exception'] = [
+            'class' => get_class($e),
             'message' => $e->getMessage(),
             'code' => $e->getCode(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
         ];
 
+        $log['stats'] = [];
         if ($this->stats){
             $log['stats'] = [
-                'effectiveUri' => $this->stats->getEffectiveUri(),
+                'effectiveUri' => $this->stats->getEffectiveUri()->__toString(),
+                'handler' => $this->stats->getHandlerStats(),
+                'errorHandlerData' => $this->stats->getHandlerErrorData(),
                 'transferTime' => $this->stats->getTransferTime(),
             ];
         }
 
+        $log['response'] = [];
         if ($this->response){
             $log['response'] = [
                 'status' => $this->response->status(),
@@ -54,22 +58,24 @@ class AppUpdate extends Command
             ];
         }
 
-        Log::error();
+        Log::error("Update failed", $log);
 
     }
 
     public function handle(): void
     {
+        if (! Helper::isPhar()){
+            return;
+        }
 
         [$verCur, $verTrg] = [app()->version(), 'v0.0.4'];
 
-        if (version_compare($verTrg, $verCur, '>')){
-            $this->info('Updating the application...');
-        }else {
-            $this->info('The application is up to date.');
+        if (version_compare($verTrg, $verCur, '<=')) {
+            return;
         }
 
         $tempFile = Helper::tempFile(false, true, "ntrn_{$verTrg}", '');
+        Log::info("Downloading update from {$verCur} to {$verTrg} to {$tempFile}");
         $url = 'http://localhost:8000/download.php?wait=0&slow=0';
 
         $stats = null;
@@ -84,22 +90,27 @@ class AppUpdate extends Command
 
         try {
             $this->response = $this->request->get($url);
-        } catch (ConnectionException|RequestException $e){
+            $this->stats = $stats;
+        } catch (\Exception $e){
+            $this->stats = $stats;
             $this->logException($e);
-            $this->error('failed');
             return;
         }
 
         if ($this->response->successful()) {
-            $this->info('Downloaded successfully.');
+            $runningPhar = \Phar::running(false);
+            File::move($tempFile, $runningPhar);
+            File::delete($tempFile);
+            Log::notice("App update from {$verCur} to {$verTrg} successful.");
         }
-
-//        $this->config('set', 'composer', File::json(base_path('composer.json')));
-
     }
 
     public function schedule(Schedule $schedule): void
     {
+        if (! config('app.update.auto', false)) {
+            return;
+        }
+
          $schedule->command(static::class)->hourly();
     }
 }
