@@ -3,15 +3,14 @@
 namespace App\Services;
 
 use App\Prompts\Progress;
-use App\Prompts\ProgressRenderer;
 use App\Prompts\Spinner;
-use App\Prompts\SpinnerRenderer;
-use App\Prompts\Note;
-use App\Prompts\NoteRenderer;
+use App\Prompts\Themes\Ntrn\ProgressRenderer;
+use App\Prompts\Themes\Ntrn\SpinnerRenderer;
 use Laravel\Prompts\Clear;
 use Laravel\Prompts\ConfirmPrompt;
 use Laravel\Prompts\MultiSearchPrompt;
 use Laravel\Prompts\MultiSelectPrompt;
+use Laravel\Prompts\Note;
 use Laravel\Prompts\PasswordPrompt;
 use Laravel\Prompts\PausePrompt;
 use Laravel\Prompts\SearchPrompt;
@@ -24,6 +23,7 @@ use Laravel\Prompts\Themes\Default\ClearRenderer;
 use Laravel\Prompts\Themes\Default\ConfirmPromptRenderer;
 use Laravel\Prompts\Themes\Default\MultiSearchPromptRenderer;
 use Laravel\Prompts\Themes\Default\MultiSelectPromptRenderer;
+use Laravel\Prompts\Themes\Default\NoteRenderer;
 use Laravel\Prompts\Themes\Default\PasswordPromptRenderer;
 use Laravel\Prompts\Themes\Default\PausePromptRenderer;
 use Laravel\Prompts\Themes\Default\SearchPromptRenderer;

@@ -6,10 +6,9 @@ return [
     'env' => (\Phar::running(false) ? 'production' : 'local'),
     'providers' => [
         App\Providers\AppServiceProvider::class,
-//        Rahul900Day\LaravelConsoleSpinner\LaravelConsoleSpinnerServiceProvider::class,
+        Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Pipeline\PipelineServiceProvider::class,
         App\Providers\NtrnServiceProvider::class,
-//        Illuminate\Concurrency\ConcurrencyServiceProvider::class,
     ],
     'key' => env('APP_KEY'),
 ];

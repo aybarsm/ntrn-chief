@@ -15,3 +15,13 @@ if (! \Phar::running(false)){
         }
     }
 }
+
+if (! function_exists('joinPaths')) {
+    function joinPaths(string $basePath = '', ...$paths): string
+    {
+        if (blank($basePath)){
+            $basePath = base_path();
+        }
+        return join_paths($basePath, ...$paths);
+    }
+}

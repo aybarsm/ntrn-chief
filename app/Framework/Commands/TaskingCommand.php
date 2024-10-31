@@ -4,71 +4,55 @@ namespace App\Framework\Commands;
 
 use App\Contracts\Console\TaskingCommandContract;
 use App\Enums\IndicatorType;
-use App\Prompts\Note;
 use App\Prompts\Progress;
 use App\Prompts\Spinner;
-use Laravel\Prompts\Spinner as LaravelSpinner;
 use App\Services\Console\Task;
 use App\Traits\Command\SignalHandler;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Console\Cursor;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-use function Laravel\Prompts\note as laravelNote;
 abstract class TaskingCommand extends Command implements TaskingCommandContract, SignalableCommandInterface
 {
     use SignalHandler;
     protected array $tasks;
     protected int $currentTask;
+    protected Cursor $cursor;
+    protected string $taskMessageTitle = '';
+    protected array $taskMessages = [];
     protected Spinner|Progress|null $indicator = null;
 
     public function __construct()
     {
         parent::__construct();
-
-        $this->tasks = Task::getCommandTasks($this);
-
-        $this->setSignalHandler('SIGINT', function (...$params) {
-            $this->error('Command interrupted');
-        });
     }
 
-    public function run(InputInterface $input, OutputInterface $output): int
+    protected function setTaskMessage(string $message): void
     {
-        \Laravel\Prompts\Prompt::setOutput($output);
+        if (! isset($this->taskMessages[$this->currentTask])){
+            $this->taskMessages[$this->currentTask] = [];
+        }
 
-        return parent::run($input, $output);
-    }
-
-    public function execute(InputInterface $input, OutputInterface $output): int
-    {
-        \Laravel\Prompts\Prompt::setOutput($output);
-
-        return parent::execute($input, $output);
+        $this->taskMessages[$this->currentTask][] = $message;
     }
 
     protected function executeTasks(): void
     {
-        $cursor = new Cursor($this->output, $this->input);
-////        dump($cursor);
-//        $cursor->savePosition();
-////        dump($cursor);
-//        laravelNote(
-//            message: 'Tasking Command',
-//            type: 'intro',
-//        );
-//        sleep(2);
-//        $cursor->restorePosition();
-////        dump($cursor);
-//        $cursor->clearOutput();
-
+        $this->tasks = Task::getCommandTasks($this);
+        $this->cursor = new Cursor($this->output);
+        \App\Prompts\Prompt::setOutput($this->output);
+        \App\Prompts\Prompt::setCursor($this->cursor);
 
         foreach ($this->tasks as $taskId => $task) {
-            $cursor = new Cursor($this->output, $this->input);
-            $cursor->savePosition();
+            $cursorPos = $this->cursor->getCurrentPosition();
 
             $this->currentTask = $taskId;
-            $this->output->writeln("Task [{$taskId}] {$task->title}: <comment>Running...</comment>");
+            $taskOrder = $taskId + 1;
+            $this->taskMessageTitle = "{$taskOrder}. {$task->title} task messages:";
+            $this->output->writeln("{$taskOrder}. {$task->title}: <comment>Running...</comment>");
+
+            if ($task->indicatorType == IndicatorType::PROGRESS){
+                $this->output->writeln('');
+            }
 
             $this->indicator = match($task->indicatorType) {
                 IndicatorType::SPINNER => new Spinner(message: $task->title),
@@ -76,17 +60,43 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
                 default => null,
             };
 
-            $result = match($task->indicatorType) {
-                IndicatorType::SPINNER => $this->indicator->spin(fn () => $this->{$task->method}()),
-                default =>  $this->{$task->method}(),
-            };
+            try {
+                $result = match($task->indicatorType) {
+                    IndicatorType::SPINNER => $this->indicator->spin(fn () => $this->{$task->method}()),
+                    default =>  $this->{$task->method}(),
+                };
+            } catch (\Exception $taskException) {
+                $result = false;
+            }
 
-            $cursor->restorePosition();
-            $cursor->clearOutput();
+            $this->cursor->moveToPosition($cursorPos[0], $cursorPos[1] - 1);
+            $this->cursor->clearOutput();
 
-            $this->output->writeln(
-                "Task [{$taskId}] {$task->title}: ".($result ? '<info>✔</info>' : '<error>failed</error>')
-            );
+            $msgSuffix = ($result === false ? ('<error>Failed' . ($task->explicit ? ' Explicitly' : '') .'!</error>') : '<info>Completed</info>');
+            $this->output->writeln("{$taskOrder}. {$task->title}: {$msgSuffix}");
+
+            $taskMessages = $this->taskMessages[$this->currentTask] ?? [];
+            if (! blank($taskMessages)){
+                $this->taskMessageTitle = Str::of($this->taskMessageTitle)->trim()->start("{$taskOrder}. {$task->title} ")->value();
+                $this->output->writeln($this->taskMessageTitle);
+                $this->output->listing($taskMessages);
+                $this->cursor->moveUp(1);
+                $this->cursor->clearLine();
+            }
+
+            if ($result === false) {
+                if (isset($taskException)) {
+                    throw $taskException;
+                }
+                if ($task->explicit) {
+                    break;
+                }
+            }
+
+            if ($result === null && $task->skipRest) {
+                break;
+            }
+            $cursor = null;
         }
     }
 

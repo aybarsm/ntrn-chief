@@ -14,36 +14,12 @@ return array (
   1 => 
   array (
     'type' => 'extension',
-    'condition' => 'curl',
-    'source' => NULL,
-    'message' => 'This application requires the extension "curl".',
-    'helpMessage' => 'This application requires the extension "curl". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  2 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'dom',
-    'source' => NULL,
-    'message' => 'This application requires the extension "dom".',
-    'helpMessage' => 'This application requires the extension "dom". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  3 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'fileinfo',
-    'source' => NULL,
-    'message' => 'This application requires the extension "fileinfo".',
-    'helpMessage' => 'This application requires the extension "fileinfo". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  4 => 
-  array (
-    'type' => 'extension',
     'condition' => 'fileinfo',
     'source' => 'league/flysystem-local',
     'message' => 'The package "league/flysystem-local" requires the extension "fileinfo".',
     'helpMessage' => 'The package "league/flysystem-local" requires the extension "fileinfo". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  5 => 
+  2 => 
   array (
     'type' => 'extension',
     'condition' => 'fileinfo',
@@ -51,15 +27,7 @@ return array (
     'message' => 'The package "league/mime-type-detection" requires the extension "fileinfo".',
     'helpMessage' => 'The package "league/mime-type-detection" requires the extension "fileinfo". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  6 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'filter',
-    'source' => NULL,
-    'message' => 'This application requires the extension "filter".',
-    'helpMessage' => 'This application requires the extension "filter". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  7 => 
+  3 => 
   array (
     'type' => 'extension',
     'condition' => 'filter',
@@ -67,7 +35,7 @@ return array (
     'message' => 'The package "illuminate/http" requires the extension "filter".',
     'helpMessage' => 'The package "illuminate/http" requires the extension "filter". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  8 => 
+  4 => 
   array (
     'type' => 'extension',
     'condition' => 'filter',
@@ -75,15 +43,7 @@ return array (
     'message' => 'The package "illuminate/support" requires the extension "filter".',
     'helpMessage' => 'The package "illuminate/support" requires the extension "filter". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  9 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'hash',
-    'source' => NULL,
-    'message' => 'This application requires the extension "hash".',
-    'helpMessage' => 'This application requires the extension "hash". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  10 => 
+  5 => 
   array (
     'type' => 'extension',
     'condition' => 'hash',
@@ -91,15 +51,7 @@ return array (
     'message' => 'The package "illuminate/encryption" requires the extension "hash".',
     'helpMessage' => 'The package "illuminate/encryption" requires the extension "hash". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  11 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'json',
-    'source' => NULL,
-    'message' => 'This application requires the extension "json".',
-    'helpMessage' => 'This application requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  12 => 
+  6 => 
   array (
     'type' => 'extension',
     'condition' => 'json',
@@ -107,7 +59,7 @@ return array (
     'message' => 'The package "beberlei/assert" requires the extension "json".',
     'helpMessage' => 'The package "beberlei/assert" requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  13 => 
+  7 => 
   array (
     'type' => 'extension',
     'condition' => 'json',
@@ -115,7 +67,7 @@ return array (
     'message' => 'The package "guzzlehttp/guzzle" requires the extension "json".',
     'helpMessage' => 'The package "guzzlehttp/guzzle" requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  14 => 
+  8 => 
   array (
     'type' => 'extension',
     'condition' => 'json',
@@ -123,7 +75,7 @@ return array (
     'message' => 'The package "laravel-zero/framework" requires the extension "json".',
     'helpMessage' => 'The package "laravel-zero/framework" requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  15 => 
+  9 => 
   array (
     'type' => 'extension',
     'condition' => 'json',
@@ -131,7 +83,7 @@ return array (
     'message' => 'The package "nesbot/carbon" requires the extension "json".',
     'helpMessage' => 'The package "nesbot/carbon" requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  16 => 
+  10 => 
   array (
     'type' => 'extension',
     'condition' => 'json',
@@ -139,15 +91,7 @@ return array (
     'message' => 'The package "ramsey/uuid" requires the extension "json".',
     'helpMessage' => 'The package "ramsey/uuid" requires the extension "json". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  17 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'openssl',
-    'source' => NULL,
-    'message' => 'This application requires the extension "openssl".',
-    'helpMessage' => 'This application requires the extension "openssl". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  18 => 
+  11 => 
   array (
     'type' => 'extension',
     'condition' => 'openssl',
@@ -155,15 +99,15 @@ return array (
     'message' => 'The package "illuminate/encryption" requires the extension "openssl".',
     'helpMessage' => 'The package "illuminate/encryption" requires the extension "openssl". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  19 => 
+  12 => 
   array (
     'type' => 'extension',
-    'condition' => 'pcre',
-    'source' => NULL,
-    'message' => 'This application requires the extension "pcre".',
-    'helpMessage' => 'This application requires the extension "pcre". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
+    'condition' => 'pcntl',
+    'source' => 'spatie/fork',
+    'message' => 'The package "spatie/fork" requires the extension "pcntl".',
+    'helpMessage' => 'The package "spatie/fork" requires the extension "pcntl". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  20 => 
+  13 => 
   array (
     'type' => 'extension',
     'condition' => 'pcre',
@@ -171,15 +115,7 @@ return array (
     'message' => 'The package "vlucas/phpdotenv" requires the extension "pcre".',
     'helpMessage' => 'The package "vlucas/phpdotenv" requires the extension "pcre". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  21 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'pdo',
-    'source' => NULL,
-    'message' => 'This application requires the extension "pdo".',
-    'helpMessage' => 'This application requires the extension "pdo". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  22 => 
+  14 => 
   array (
     'type' => 'extension',
     'condition' => 'pdo',
@@ -187,15 +123,7 @@ return array (
     'message' => 'The package "illuminate/database" requires the extension "pdo".',
     'helpMessage' => 'The package "illuminate/database" requires the extension "pdo". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  23 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'phar',
-    'source' => NULL,
-    'message' => 'This application requires the extension "phar".',
-    'helpMessage' => 'This application requires the extension "phar". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  24 => 
+  15 => 
   array (
     'type' => 'extension',
     'condition' => 'posix',
@@ -203,7 +131,7 @@ return array (
     'message' => 'The package "php-school/cli-menu" requires the extension "posix".',
     'helpMessage' => 'The package "php-school/cli-menu" requires the extension "posix". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  25 => 
+  16 => 
   array (
     'type' => 'extension',
     'condition' => 'posix',
@@ -211,7 +139,7 @@ return array (
     'message' => 'The package "php-school/terminal" requires the extension "posix".',
     'helpMessage' => 'The package "php-school/terminal" requires the extension "posix". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  26 => 
+  17 => 
   array (
     'type' => 'extension',
     'condition' => 'session',
@@ -219,7 +147,7 @@ return array (
     'message' => 'The package "illuminate/session" requires the extension "session".',
     'helpMessage' => 'The package "illuminate/session" requires the extension "session". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  27 => 
+  18 => 
   array (
     'type' => 'extension',
     'condition' => 'simplexml',
@@ -227,15 +155,15 @@ return array (
     'message' => 'The package "beberlei/assert" requires the extension "simplexml".',
     'helpMessage' => 'The package "beberlei/assert" requires the extension "simplexml". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  28 => 
+  19 => 
   array (
     'type' => 'extension',
-    'condition' => 'tokenizer',
-    'source' => NULL,
-    'message' => 'This application requires the extension "tokenizer".',
-    'helpMessage' => 'This application requires the extension "tokenizer". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
+    'condition' => 'sockets',
+    'source' => 'spatie/fork',
+    'message' => 'The package "spatie/fork" requires the extension "sockets".',
+    'helpMessage' => 'The package "spatie/fork" requires the extension "sockets". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  29 => 
+  20 => 
   array (
     'type' => 'extension',
     'condition' => 'tokenizer',
@@ -243,15 +171,7 @@ return array (
     'message' => 'The package "illuminate/view" requires the extension "tokenizer".',
     'helpMessage' => 'The package "illuminate/view" requires the extension "tokenizer". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  30 => 
-  array (
-    'type' => 'extension',
-    'condition' => 'xml',
-    'source' => NULL,
-    'message' => 'This application requires the extension "xml".',
-    'helpMessage' => 'This application requires the extension "xml". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
-  ),
-  31 => 
+  21 => 
   array (
     'type' => 'extension',
     'condition' => 'zlib',
@@ -259,7 +179,7 @@ return array (
     'message' => 'This application requires the extension "zlib".',
     'helpMessage' => 'This application requires the extension "zlib". You either need to enable it or request the application to be shipped with a polyfill for this extension.',
   ),
-  32 => 
+  22 => 
   array (
     'type' => 'extension-conflict',
     'condition' => 'psr',

@@ -21,7 +21,7 @@ trait SignalHandler
         return $this;
     }
 
-    private function setSignalHandlers(array $handlers): static
+    protected function setSignalHandlers(array $handlers): static
     {
         foreach ($handlers as $signalName => $action) {
             $this->setSignalHandler($signalName, $action);
@@ -30,7 +30,7 @@ trait SignalHandler
         return $this;
     }
 
-    private function setSignalHandler(string $signalName, callable $action): static
+    protected function setSignalHandler(string $signalName, callable $action): static
     {
         throw_if(! Str::startsWith($signalName, 'SIG') && ! Str::startsWith($signalName, 'SIG_') && ! defined($signalName),
             \InvalidArgumentException::class, "Invalid signal name [{$signalName}]");

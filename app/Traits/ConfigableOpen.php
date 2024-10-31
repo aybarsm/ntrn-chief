@@ -16,7 +16,6 @@ Trait ConfigableOpen
 
     public function config(string $method, ...$parameters): mixed
     {
-        dump($method);
         static::validateConfigMethod($method);
 
         if ($method === 'get' && is_array($parameters[0]) && Arr::isList($parameters[0]) && ! blank($parameters[0])){
