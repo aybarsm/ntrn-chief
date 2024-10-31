@@ -1,7 +1,9 @@
 <?php
+
+use App\Services\Helper;
 use function Illuminate\Filesystem\join_paths;
 
-return (\Phar::running(false) ? [] : [
+return (Helper::isPhar() ? [] : [
     'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
     'build' => [
         'path' => join_paths(base_path(), 'builds'),

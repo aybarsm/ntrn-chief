@@ -34,6 +34,7 @@ class AppBuild extends TaskingCommand
     use Configable;
 
     protected string $configablePrefix = 'build';
+    protected bool $initalised = false;
 
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
@@ -183,6 +184,7 @@ class AppBuild extends TaskingCommand
 
     protected function prepare(): bool
     {
+        $this->initalised = true;
         $backupItems = $this->config('get', 'backup.items', []);
 
         if (! blank($backupItems)){
@@ -424,6 +426,10 @@ class AppBuild extends TaskingCommand
     }
     private function cleanUp(bool $isSignal = false): AppBuild|int
     {
+        if (! $this->initalised){
+            return $isSignal ? self::SUCCESS : $this;
+        }
+
         if (File::exists(config('dev.build.app_version'))) {
             File::delete(config('dev.build.app_version'));
         }
