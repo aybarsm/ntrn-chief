@@ -18,11 +18,11 @@ class GitHub
         };
     }
 
-    protected static function isValidRepo(array $repo, bool $throw = false): bool|array
+    protected static function isValidRepo(array $repo, string $input, bool $throw = false): bool|array
     {
-        $result = isset($repo['org']) && isset($repo['repo']) && !blank($repo['org']) && !blank($repo['repo']);
+        $result = isset($repo['org']) && isset($repo['repo']) && ! blank($repo['org']) && ! blank($repo['repo']);
 
-        throw_if($throw && ! $result, \InvalidArgumentException::class, 'Invalid repository format.');
+        throw_if($throw && ! $result, \InvalidArgumentException::class, "Invalid [{$input}] repository format.");
 
         return $throw ? $repo : $result;
     }
@@ -54,7 +54,7 @@ class GitHub
 
     public static function getTags(string $input): \Illuminate\Http\Client\Response
     {
-        $input = static::isValidRepo(static::resolveRepository($input), true);
+        $input = static::isValidRepo(static::resolveRepository($input), $input, true);
         $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/tags";
 
         return static::apiGet($url);
@@ -67,7 +67,7 @@ class GitHub
 
     public static function releaseLatest(string $input): string
     {
-        $input = static::isValidRepo(static::resolveRepository($input), true);
+        $input = static::isValidRepo(static::resolveRepository($input), $input, true);
         $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/releases/latest";
 
         return static::apiGet($url)->json('tag_name');

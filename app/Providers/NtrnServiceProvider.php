@@ -10,6 +10,8 @@ use Illuminate\Console\Command;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Illuminate\Support\Stringable;
 
 class NtrnServiceProvider extends ServiceProvider
 {
@@ -26,7 +28,8 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-//        Logger::setTimezone('');
+        Stringable::mixin(new \App\Mixins\StringableMixin(), true);
+        Str::mixin(new \App\Mixins\StrMixin(), true);
     }
 
     protected function registerMixins(): void

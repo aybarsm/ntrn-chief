@@ -30,17 +30,17 @@ return (Helper::isPhar() ? [] : [
                     'remote' => 'bulk/php-8.3.12-micro-linux-aarch64.tar.gz',
                     'archiveFile' => 'micro.sfx'
                 ],
-                'macos-aarch64' => [
+                'darwin-aarch64' => [
                     'local' => 'php-8.3.12-common-micro-macos-aarch64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-macos-aarch64.tar.gz',
                     'archiveFile' => 'micro.sfx'
                 ],
-                'macos-x86_64' => [
+                'darwin-x86_64' => [
                     'local' => 'php-8.3.12-bulk-micro-macos-x86_64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-macos-x86_64.tar.gz',
                     'archiveFile' => 'micro.sfx'
                 ],
-                'windows' => [
+                'windows-x86_64' => [
                     'local' => 'php-8.3.12-max-micro-win.sfx',
                     'remote' => 'windows/spc-max/php-8.3.12-micro-win.zip',
                     'archiveFile' => 'micro.sfx'

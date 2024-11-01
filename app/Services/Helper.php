@@ -6,14 +6,19 @@ use App\Prompts\Contracts\ProgressContract;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use function Illuminate\Filesystem\join_paths;
 use function Symfony\Component\String\s;
-
+use Symfony\Component\Process\Process as SymfonyProcess;
 class Helper
 {
-    static public array $langMap = [
+    protected static false|null|string $os = false;
+    protected static false|null|string $arch = false;
+    protected static false|null|string $dist = false;
+
+    public static array $langMap = [
         'langX.rx' => ['receive', 'receiving'],
         'langX.tx' => ['send', 'sending'],
         'rx' => ['download', 'downloading'],
@@ -83,6 +88,17 @@ class Helper
         return $path;
     }
 
+    public static function firstLine(string $str, bool $lower = false): string
+    {
+        return Str::of($str)
+            ->trim()
+            ->replaceMatches('/^\s*[\r\n]+|[\r\n]+\s*\z/', '')
+            ->replaceMatches('/(\n\s*){2,}/', "\n")
+            ->when($lower, fn (Stringable $str) => $str->lower())
+            ->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)
+            ->first();
+    }
+
     public static function isPhar(): bool
     {
         return ! blank(\Phar::running(false));
@@ -126,6 +142,76 @@ class Helper
     ): ProgressContract
     {
         return static::fileStreamProgress($progress, $remote, $labelSuffix);
+    }
+
+    public static function os(): string
+    {
+        if (static::$os === false) {
+            static::$os = Str::lower(PHP_OS_FAMILY);
+        }
+
+        return static::$os;
+    }
+
+    protected static function getArch(): ?string
+    {
+        $cmd = match(static::Os()) {
+            'linux', 'darwin' => 'uname -m',
+            'windows' => 'echo %PROCESSOR_ARCHITECTURE%',
+            default => null,
+        };
+
+        if (! $cmd) {
+            return null;
+        }
+
+        try {
+            $process = SymfonyProcess::fromShellCommandline($cmd)->enableOutput()->mustRun();
+        }catch (\Exception $e){
+            return null;
+        }
+
+        $output = $process->isSuccessful() ? static::firstLine($process->getOutput(), true) : null;
+
+        return match($output) {
+            'x86_64', 'amd64' => 'x86_64',
+            'aarch64', 'arm64' => 'aarch64',
+            default => null
+        };
+    }
+
+    public static function arch(): ?string
+    {
+        if (static::$arch === false) {
+            static::$arch = static::getArch();
+        }
+
+        return static::$arch;
+    }
+
+    public static function dist(mixed $default = null): mixed
+    {
+        if (static::$dist === false) {
+            static::$dist = static::getDist();
+        }
+
+        return static::$dist === null ? $default : static::$dist;
+    }
+
+    protected static function getDist(): ?string
+    {
+        [$os, $arch] = [static::os(), static::arch()];
+
+        return $os && $arch ? "{$os}-{$arch}" : null;
+    }
+
+    public static function jsonDecode(mixed $json, mixed $default = null, bool $assoc = true, int $depth = 512, int $flags = 0): mixed
+    {
+        if (is_string($json) && Str::isJson($json)) {
+            return json_decode($json, $assoc, $depth, $flags);
+        }
+
+        return $default;
     }
 
 }
