@@ -12,6 +12,7 @@ class KeyGenerate extends KeyGenerateCommand
     {--s|show : Display the key instead of modifying files}
     {--f|force : Force the operation to run when in production}
     {--r|replace : Replace the application key when it is already set}';
+
     protected $description = 'Set the application key (Customised)';
 
     public function handle(): void
@@ -20,11 +21,13 @@ class KeyGenerate extends KeyGenerateCommand
 
         if ($this->option('show')) {
             $this->line($key);
+
             return;
         }
 
         if (! blank($this->laravel['config']['app.key']) && ! $this->option('replace')) {
             $this->error('Application key is already set. Use the (-r|--replace) option to force the operation.');
+
             return;
         }
 

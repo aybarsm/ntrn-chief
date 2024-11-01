@@ -2,20 +2,23 @@
 
 namespace App\Prompts;
 
+use App\Prompts\Contracts\ProgressContract;
 use App\Traits\ConfigableOpen;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
-use App\Prompts\Contracts\ProgressContract;
 use Symfony\Component\Console\Cursor;
 
 class Progress extends Prompt implements ProgressContract
 {
-    use Macroable, Conditionable, ConfigableOpen;
+    use Conditionable, ConfigableOpen, Macroable;
 
     public int $progress = 0;
+
     public int $total = 0;
+
     protected bool $originalAsync;
+
     public static array $defaults = [
         'state' => [
             'initial' => ['color' => 'blue', 'label' => ['method' => 'dim']],
@@ -26,8 +29,8 @@ class Progress extends Prompt implements ProgressContract
             'default' => ['color' => 'yellow', 'label' => ['method' => 'cyan']],
         ],
         'auto' => ['clear' => false, 'start' => true, 'finish' => true],
-        'number' => ['type' => null,'options' => []],
-        'show' => ['percentage' => true]
+        'number' => ['type' => null, 'options' => []],
+        'show' => ['percentage' => true],
     ];
 
     public function __construct(public iterable|int $steps = 0, string $label = '', string $hint = '')
@@ -41,8 +44,8 @@ class Progress extends Prompt implements ProgressContract
 
         $config = static::$defaults;
 
-        foreach(['label' => $label, 'hint' => $hint] as $entryType => $entryValue){
-            if (! blank($entryValue)){
+        foreach (['label' => $label, 'hint' => $hint] as $entryType => $entryValue) {
+            if (! blank($entryValue)) {
                 $config['state']['default'][$entryType]['value'] = $entryValue;
             }
         }
@@ -92,6 +95,7 @@ class Progress extends Prompt implements ProgressContract
 
         return $result;
     }
+
     public function start(): void
     {
         $this->capturePreviousNewLines();
@@ -112,7 +116,7 @@ class Progress extends Prompt implements ProgressContract
 
     public function advance(int $step = 1): void
     {
-        if ($this->state == 'initial' && $this->progress == 0 && $step > 0 && $this->config('get', 'auto.start') === true){
+        if ($this->state == 'initial' && $this->progress == 0 && $step > 0 && $this->config('get', 'auto.start') === true) {
             $this->start();
         }
 
@@ -122,13 +126,13 @@ class Progress extends Prompt implements ProgressContract
             $this->progress = $this->total;
         }
 
-        if ($this->progress === $this->total && $this->config('get', 'auto.finish') === true){
+        if ($this->progress === $this->total && $this->config('get', 'auto.finish') === true) {
             $this->finish();
-        }else {
+        } else {
             $this->render();
         }
 
-        if ($this->progress === $this->total && $this->config('get', 'auto.clear') === true){
+        if ($this->progress === $this->total && $this->config('get', 'auto.clear') === true) {
             $this->clear();
         }
     }
@@ -200,7 +204,7 @@ class Progress extends Prompt implements ProgressContract
     {
         $this->setConf(__FUNCTION__, $path, $value);
 
-        if ($this->state !== 'initial'){
+        if ($this->state !== 'initial') {
             $this->render();
         }
 
@@ -224,7 +228,7 @@ class Progress extends Prompt implements ProgressContract
 
     public function total(int $total): static
     {
-        if (! is_int($this->steps)){
+        if (! is_int($this->steps)) {
             return $this;
         }
 
@@ -232,7 +236,7 @@ class Progress extends Prompt implements ProgressContract
             $this->total = $total;
         }
 
-        if ($this->state == 'active'){
+        if ($this->state == 'active') {
             $this->render();
         }
 
@@ -246,21 +250,21 @@ class Progress extends Prompt implements ProgressContract
         }
     }
 
-//    public function clear(): void
-//    {
-//        $this->eraseRenderedLines();
-////        $this->cursor->restorePosition();
-////        $this->cursor->clearOutput();
-////        $this->cursor = null;
-//    }
-//    protected function eraseRenderedLines(): void
-//    {
-//        $lines = explode(PHP_EOL, $this->prevFrame);
-//        info("Erasing " . count($lines) . " lines y: ". (-count($lines) + 1));
-//        info("Frames: " . $this->prevFrame);
-//        info('######');
-//        $this->moveCursor(-999, -count($lines) + 1);
-//        $this->eraseDown();
-//        $this->prevFrame = '';
-//    }
+    //    public function clear(): void
+    //    {
+    //        $this->eraseRenderedLines();
+    ////        $this->cursor->restorePosition();
+    ////        $this->cursor->clearOutput();
+    ////        $this->cursor = null;
+    //    }
+    //    protected function eraseRenderedLines(): void
+    //    {
+    //        $lines = explode(PHP_EOL, $this->prevFrame);
+    //        info("Erasing " . count($lines) . " lines y: ". (-count($lines) + 1));
+    //        info("Frames: " . $this->prevFrame);
+    //        info('######');
+    //        $this->moveCursor(-999, -count($lines) + 1);
+    //        $this->eraseDown();
+    //        $this->prevFrame = '';
+    //    }
 }

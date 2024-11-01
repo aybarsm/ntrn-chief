@@ -9,9 +9,9 @@ if (\Phar::running(false)) {
         $app->useEnvironmentPath(getenv('NTRN_BASE'));
         $app->useStoragePath(getenv('NTRN_BASE'));
     }
-}elseif (file_exists(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'dev') && is_dir(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'dev')) {
-    $app->useEnvironmentPath(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'dev');
-    $app->useStoragePath(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'dev');
+} elseif (file_exists(dirname(__DIR__).DIRECTORY_SEPARATOR.'dev') && is_dir(dirname(__DIR__).DIRECTORY_SEPARATOR.'dev')) {
+    $app->useEnvironmentPath(dirname(__DIR__).DIRECTORY_SEPARATOR.'dev');
+    $app->useStoragePath(dirname(__DIR__).DIRECTORY_SEPARATOR.'dev');
 }
 
 return $app;

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Prompts;
+
 use Closure;
 
 if (! function_exists('\App\Prompts\spin')) {

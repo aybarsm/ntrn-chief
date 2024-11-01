@@ -2,7 +2,4 @@
 
 namespace App\Prompts\Contracts;
 
-interface SpinnerContract
-{
-
-}
+interface SpinnerContract {}

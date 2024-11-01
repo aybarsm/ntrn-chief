@@ -2,9 +2,10 @@
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+
 use function Illuminate\Filesystem\join_paths;
 
-if (! \Phar::running(false)){
+if (! \Phar::running(false)) {
     if (! function_exists('dev_temp')) {
         function dev_temp(string $file = ''): string
         {
@@ -19,9 +20,10 @@ if (! \Phar::running(false)){
 if (! function_exists('joinPaths')) {
     function joinPaths(string $basePath = '', ...$paths): string
     {
-        if (blank($basePath)){
+        if (blank($basePath)) {
             $basePath = base_path();
         }
+
         return join_paths($basePath, ...$paths);
     }
 }

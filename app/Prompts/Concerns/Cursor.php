@@ -8,7 +8,7 @@ trait Cursor
 
     public function hideCursor(): void
     {
-        if ( ! static::$cursorHidden){
+        if (! static::$cursorHidden) {
             static::$cursor->hide();
         }
 
@@ -17,7 +17,7 @@ trait Cursor
 
     public function showCursor(): void
     {
-        if (static::$cursorHidden){
+        if (static::$cursorHidden) {
             static::$cursor->show();
         }
     }

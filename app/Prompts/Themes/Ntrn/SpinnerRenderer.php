@@ -2,12 +2,12 @@
 
 namespace App\Prompts\Themes\Ntrn;
 
-use Laravel\Prompts\Themes\Default\Renderer as LaravelRenderer;
 use App\Prompts\Spinner;
+use Laravel\Prompts\Themes\Default\Renderer as LaravelRenderer;
 
 class SpinnerRenderer extends LaravelRenderer
 {
-//    protected array $frames = ['⠂', '⠒', '⠐', '⠰', '⠠', '⠤', '⠄', '⠆'];
+    //    protected array $frames = ['⠂', '⠒', '⠐', '⠰', '⠠', '⠤', '⠄', '⠆'];
     protected array $frames = ['⠏', '⠛', '⠹', '⢸', '⣰', '⣤', '⣆', '⡇'];
 
     protected string $staticFrame = '⠶';

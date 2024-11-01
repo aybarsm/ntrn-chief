@@ -15,6 +15,7 @@ class MakeCommand extends ConsoleMakeCommand
     {--command= : The terminal command that will be used to invoke the class}
     {--s|schedule : Create command with schedule}
     {--t|tasking : Create command with tasking}';
+
     protected $description = 'Create a new Artisan command (Customised)';
 
     protected function getNameInput(): string
@@ -25,9 +26,9 @@ class MakeCommand extends ConsoleMakeCommand
     protected function getStub(): string
     {
         $relativePath = Str::of('/stubs/console')
-        ->when($this->option('tasking'), fn($path) => $path->append('.tasking'))
-        ->when($this->option('schedule'), fn($path) => $path->append('.schedule'))
-        ->finish('.stub')->value();
+            ->when($this->option('tasking'), fn ($path) => $path->append('.tasking'))
+            ->when($this->option('schedule'), fn ($path) => $path->append('.schedule'))
+            ->finish('.stub')->value();
 
         return file_exists($customPath = $this->laravel->basePath(trim($relativePath, '/')))
             ? $customPath

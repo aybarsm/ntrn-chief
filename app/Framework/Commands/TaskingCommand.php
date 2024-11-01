@@ -11,14 +11,21 @@ use App\Traits\Command\SignalHandler;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Console\Cursor;
-abstract class TaskingCommand extends Command implements TaskingCommandContract, SignalableCommandInterface
+
+abstract class TaskingCommand extends Command implements SignalableCommandInterface, TaskingCommandContract
 {
     use SignalHandler;
+
     protected array $tasks;
+
     protected int $currentTask;
+
     protected Cursor $cursor;
+
     protected string $taskMessageTitle = '';
+
     protected array $taskMessages = [];
+
     protected Spinner|Progress|null $indicator = null;
 
     public function __construct()
@@ -28,7 +35,7 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
 
     protected function setTaskMessage(string $message): void
     {
-        if (! isset($this->taskMessages[$this->currentTask])){
+        if (! isset($this->taskMessages[$this->currentTask])) {
             $this->taskMessages[$this->currentTask] = [];
         }
 
@@ -50,20 +57,20 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
             $this->taskMessageTitle = "{$taskOrder}. {$task->title} task messages:";
             $this->output->writeln("{$taskOrder}. {$task->title}: <comment>Running...</comment>");
 
-            if ($task->indicatorType == IndicatorType::PROGRESS){
+            if ($task->indicatorType == IndicatorType::PROGRESS) {
                 $this->output->writeln('');
             }
 
-            $this->indicator = match($task->indicatorType) {
+            $this->indicator = match ($task->indicatorType) {
                 IndicatorType::SPINNER => new Spinner(message: $task->title),
                 IndicatorType::PROGRESS => new Progress(label: $task->title),
                 default => null,
             };
 
             try {
-                $result = match($task->indicatorType) {
+                $result = match ($task->indicatorType) {
                     IndicatorType::SPINNER => $this->indicator->spin(fn () => $this->{$task->method}()),
-                    default =>  $this->{$task->method}(),
+                    default => $this->{$task->method}(),
                 };
             } catch (\Exception $taskException) {
                 $result = false;
@@ -72,11 +79,11 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
             $this->cursor->moveToPosition($cursorPos[0], $cursorPos[1] - 1);
             $this->cursor->clearOutput();
 
-            $msgSuffix = ($result === false ? ('<error>Failed' . ($task->explicit ? ' Explicitly' : '') .'!</error>') : '<info>Completed</info>');
+            $msgSuffix = ($result === false ? ('<error>Failed'.($task->explicit ? ' Explicitly' : '').'!</error>') : '<info>Completed</info>');
             $this->output->writeln("{$taskOrder}. {$task->title}: {$msgSuffix}");
 
             $taskMessages = $this->taskMessages[$this->currentTask] ?? [];
-            if (! blank($taskMessages)){
+            if (! blank($taskMessages)) {
                 $this->taskMessageTitle = Str::of($this->taskMessageTitle)->trim()->start("{$taskOrder}. {$task->title} ")->value();
                 $this->output->writeln($this->taskMessageTitle);
                 $this->output->listing($taskMessages);
@@ -99,5 +106,4 @@ abstract class TaskingCommand extends Command implements TaskingCommandContract,
             $cursor = null;
         }
     }
-
 }

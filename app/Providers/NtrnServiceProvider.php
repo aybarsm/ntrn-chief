@@ -19,7 +19,7 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Stringable::mixin(new \App\Mixins\StringableMixin(), true);
-        Str::mixin(new \App\Mixins\StrMixin(), true);
+        Stringable::mixin(new \App\Mixins\StringableMixin, true);
+        Str::mixin(new \App\Mixins\StrMixin, true);
     }
 }

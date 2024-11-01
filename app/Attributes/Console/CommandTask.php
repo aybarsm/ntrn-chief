@@ -9,8 +9,11 @@ use Attribute;
 class CommandTask
 {
     public int $id;
+
     public int $position;
+
     public array $messages = [];
+
     public string $messageTitle;
 
     public function __construct(
@@ -19,9 +22,7 @@ class CommandTask
         public string $title = '',
         public bool $explicit = false,
         public bool $skipRest = false,
-    )
-    {
-    }
+    ) {}
 
     public function addMessage(string $message): void
     {

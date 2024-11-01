@@ -7,8 +7,7 @@ class StrMixin
 {
     public static function removeEmptyLines(): \Closure
     {
-        return function (string $str): string
-        {
+        return function (string $str): string {
             return static::of($str)->removeEmptyLines()->value();
         };
     }

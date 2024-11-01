@@ -2,23 +2,23 @@
 
 namespace App\Services;
 
-
-
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
+
 use function Illuminate\Filesystem\join_paths;
 
 class Archive
 {
     protected static bool $tryUseOS = true;
+
     protected static function canUseOS(string $command): bool
     {
         if (! static::$tryUseOS) {
             return false;
         }
 
-        if (! in_array(Str::lower(PHP_OS_FAMILY), ['linux', 'darwin'] )) {
+        if (! in_array(Str::lower(PHP_OS_FAMILY), ['linux', 'darwin'])) {
             return false;
         }
 
@@ -88,7 +88,7 @@ class Archive
             return $process->successful();
         }
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         $zip->open($archive);
         $zip->extractTo($destination, $files);
         $zip->close();
@@ -100,11 +100,10 @@ class Archive
     {
         static::validateInputs($archive, $destination);
 
-        return match(true) {
+        return match (true) {
             Str::endsWith($archive, '.tar') => static::extractTar($archive, $destination, $files),
             Str::endsWith($archive, '.tar.gz') => static::extractTarGz($archive, $destination, $files),
             Str::endsWith($archive, '.zip') => static::extractZip($archive, $destination, $files),
         };
     }
-
 }

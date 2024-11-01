@@ -2,7 +2,4 @@
 
 namespace App\Services\Http\Client;
 
-class Response
-{
-
-}
+class Response {}

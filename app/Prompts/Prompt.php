@@ -8,8 +8,11 @@ use Symfony\Component\Console\Cursor;
 abstract class Prompt extends LaravelPrompt
 {
     use Concerns\Cursor;
+
     protected static Cursor $cursor;
+
     protected array $cursorPos;
+
     protected bool $isRendered = false;
 
     protected static function cursor(): Cursor
@@ -24,7 +27,7 @@ abstract class Prompt extends LaravelPrompt
 
     protected function render(): void
     {
-        if (! $this->isRendered){
+        if (! $this->isRendered) {
             $this->cursorPos = static::$cursor->getCurrentPosition();
             $this->isRendered = true;
         }
@@ -34,16 +37,16 @@ abstract class Prompt extends LaravelPrompt
 
     public function clear(): void
     {
-        if (! $this->isRendered){
+        if (! $this->isRendered) {
             return;
         }
 
-        static::$cursor->moveToPosition($this->cursorPos[0], $this->cursorPos[1]-1);
+        static::$cursor->moveToPosition($this->cursorPos[0], $this->cursorPos[1] - 1);
         static::$cursor->clearOutput();
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     abstract public function value(): mixed;
 }

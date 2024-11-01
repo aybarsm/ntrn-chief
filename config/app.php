@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\Helper;
-use Illuminate\Support\Str;
 
 return [
     'name' => 'NTRN',
@@ -21,9 +20,9 @@ return [
     ],
     'update' => [
         'strategy' => env('APP_UPDATE_STRATEGY', 'DIRECT'),
-        'url' => env('APP_UPDATE_URL', 'https://s3.blrm.net/vault/ntrn/latest/' . Helper::dist()),
+        'url' => env('APP_UPDATE_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist()),
         'version' => [
-            'url' => env('APP_UPDATE_VERSION_URL', 'https://s3.blrm.net/vault/ntrn/latest/' . Helper::dist() . '/version'),
+            'url' => env('APP_UPDATE_VERSION_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist().'/version'),
             'headers' => Helper::jsonDecode(env('APP_UPDATE_VERSION_HEADERS'), []),
             'pattern' => env('APP_UPDATE_VERSION_PATTERN', '/v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/'),
         ],

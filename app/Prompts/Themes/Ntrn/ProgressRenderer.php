@@ -2,13 +2,15 @@
 
 namespace App\Prompts\Themes\Ntrn;
 
+use App\Prompts\Progress;
 use Illuminate\Support\Number;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
 use Laravel\Prompts\Themes\Default\Renderer as LaravelRenderer;
-use App\Prompts\Progress;
+
 class ProgressRenderer extends LaravelRenderer
 {
     use DrawsBoxes;
+
     protected string $barCharacter = '█';
 
     public function __invoke(Progress $progress): string
@@ -20,7 +22,7 @@ class ProgressRenderer extends LaravelRenderer
         $numberType = $progress->config('get', 'number.type', null);
         $numberOptions = $progress->config('get', 'number.options', []);
 
-        if ($numberType !== null && method_exists(Number::class, $numberType)){
+        if ($numberType !== null && method_exists(Number::class, $numberType)) {
             $completed = Number::{$numberType}($completed, ...$numberOptions);
             $total = Number::{$numberType}($total, ...$numberOptions);
         }
@@ -31,9 +33,9 @@ class ProgressRenderer extends LaravelRenderer
 
         $label = $progress->config('get', ["state.{$progress->state}.label.value", 'state.default.label.value'], '');
         $showPercentage = $progress->config('get', 'show.percentage', true);
-        $label = $showPercentage ? $label . ' ' . round($progress->percentage() * 100) . '%' : $label;
+        $label = $showPercentage ? $label.' '.round($progress->percentage() * 100).'%' : $label;
         $labelMethod = $progress->config('get', ["state.{$progress->state}.label.method", 'state.default.label.method'], 'cyan');
-        if ($labelMethod !== null && method_exists($this, $labelMethod)){
+        if ($labelMethod !== null && method_exists($this, $labelMethod)) {
             $label = $this->{$labelMethod}($label);
         }
 
@@ -58,48 +60,48 @@ class ProgressRenderer extends LaravelRenderer
             fn () => $this->{$messageMethod}($message),
         );
 
-//        return match ($progress->state) {
-//            'initial' => $this
-//                ->box(
-//                    title: $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
-//                    body: $this->dim($filled),
-//                    color: 'blue',
-//                    info: $progress->initialMessage,
-//            ),
-//            'submit' => $this
-//                ->box(
-//                    $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
-//                    $this->dim($filled),
-//                    color: 'green',
-//                    info: $info,
-//                ),
-//            'error' => $this
-//                ->box(
-//                    $this->truncate($label, $progress->terminal()->cols() - 6),
-//                    $this->dim($filled),
-//                    color: 'red',
-//                    info: $info,
-//                ),
-//            'cancel' => $this
-//                ->box(
-//                    $this->truncate($label, $progress->terminal()->cols() - 6),
-//                    $this->dim($filled),
-//                    color: 'red',
-//                    info: $info,
-//                )
-//                ->error($progress->cancelMessage),
-//            default => $this
-//                ->box(
-//                    $this->cyan($this->truncate($label, $progress->terminal()->cols() - 6)),
-//                    $this->dim($filled),
-//                    color: 'yellow',
-//                    info: $progress->progress.'/'.$progress->total,
-//                )
-//                ->when(
-//                    $progress->hint,
-//                    fn () => $this->hint($progress->hint),
-//                    fn () => $this->newLine() // Space for errors
-//                )
-//        };
+        //        return match ($progress->state) {
+        //            'initial' => $this
+        //                ->box(
+        //                    title: $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
+        //                    body: $this->dim($filled),
+        //                    color: 'blue',
+        //                    info: $progress->initialMessage,
+        //            ),
+        //            'submit' => $this
+        //                ->box(
+        //                    $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
+        //                    $this->dim($filled),
+        //                    color: 'green',
+        //                    info: $info,
+        //                ),
+        //            'error' => $this
+        //                ->box(
+        //                    $this->truncate($label, $progress->terminal()->cols() - 6),
+        //                    $this->dim($filled),
+        //                    color: 'red',
+        //                    info: $info,
+        //                ),
+        //            'cancel' => $this
+        //                ->box(
+        //                    $this->truncate($label, $progress->terminal()->cols() - 6),
+        //                    $this->dim($filled),
+        //                    color: 'red',
+        //                    info: $info,
+        //                )
+        //                ->error($progress->cancelMessage),
+        //            default => $this
+        //                ->box(
+        //                    $this->cyan($this->truncate($label, $progress->terminal()->cols() - 6)),
+        //                    $this->dim($filled),
+        //                    color: 'yellow',
+        //                    info: $progress->progress.'/'.$progress->total,
+        //                )
+        //                ->when(
+        //                    $progress->hint,
+        //                    fn () => $this->hint($progress->hint),
+        //                    fn () => $this->newLine() // Space for errors
+        //                )
+        //        };
     }
 }

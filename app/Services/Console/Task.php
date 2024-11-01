@@ -31,5 +31,4 @@ class Task
 
         return $result;
     }
-
 }

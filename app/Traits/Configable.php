@@ -6,7 +6,7 @@ use App\Services\Helper;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
-Trait Configable
+trait Configable
 {
     private array $configables = [];
 
@@ -19,19 +19,19 @@ Trait Configable
     {
         static::validateConfigMethod($method);
 
-        if (isset($this->configablePrefix) && is_string($this->configablePrefix) && ! blank($this->configablePrefix) and array_key_exists(0, $parameters) and is_string($parameters[0])){
+        if (isset($this->configablePrefix) && is_string($this->configablePrefix) && ! blank($this->configablePrefix) and array_key_exists(0, $parameters) and is_string($parameters[0])) {
             $parameters[0] = Str::start($parameters[0], Str::of("{$this->configablePrefix}")->trim()->trim('.')->append('.')->value());
         }
 
-        if ($method === 'get' && is_array($parameters[0]) && Arr::isList($parameters[0]) && ! blank($parameters[0])){
+        if ($method === 'get' && is_array($parameters[0]) && Arr::isList($parameters[0]) && ! blank($parameters[0])) {
 
             $defaultEmpty = Helper::generateExtendedUlid();
             $default = Arr::exists($parameters, 1) ? $parameters[1] : null;
             $retrieved = $defaultEmpty;
 
-            foreach($parameters[0] as $path){
+            foreach ($parameters[0] as $path) {
                 $retrieved = Arr::get($this->configables, $path, $defaultEmpty);
-                if ($retrieved !== $defaultEmpty){
+                if ($retrieved !== $defaultEmpty) {
                     break;
                 }
             }
@@ -46,5 +46,4 @@ Trait Configable
     {
         return $this->configable($method, ...$parameters);
     }
-
 }

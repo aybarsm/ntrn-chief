@@ -2,7 +2,4 @@
 
 namespace App\Contracts\Console;
 
-interface TaskingCommandContract
-{
-
-}
+interface TaskingCommandContract {}

@@ -1,9 +1,10 @@
 <?php
 
 use App\Services\Helper;
+
 use function Illuminate\Filesystem\join_paths;
 
-return (Helper::isPhar() ? [] : [
+return Helper::isPhar() ? [] : [
     'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
     'github' => [
         'token' => env('DEV_GITHUB_TOKEN'),
@@ -27,25 +28,24 @@ return (Helper::isPhar() ? [] : [
                 'linux-x86_64' => [
                     'local' => 'php-8.3.12-bulk-micro-linux-x86_64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-linux-x86_64.tar.gz',
-                    'archiveFile' => 'micro.sfx'
+                    'archiveFile' => 'micro.sfx',
                 ],
                 'linux-aarch64' => [
                     'local' => 'php-8.3.12-bulk-micro-linux-aarch64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-linux-aarch64.tar.gz',
-                    'archiveFile' => 'micro.sfx'
+                    'archiveFile' => 'micro.sfx',
                 ],
                 'darwin-aarch64' => [
                     'local' => 'php-8.3.12-common-micro-macos-aarch64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-macos-aarch64.tar.gz',
-                    'archiveFile' => 'micro.sfx'
+                    'archiveFile' => 'micro.sfx',
                 ],
                 'darwin-x86_64' => [
                     'local' => 'php-8.3.12-bulk-micro-macos-x86_64.sfx',
                     'remote' => 'bulk/php-8.3.12-micro-macos-x86_64.tar.gz',
-                    'archiveFile' => 'micro.sfx'
+                    'archiveFile' => 'micro.sfx',
                 ],
             ],
         ],
-
-    ]
-]);
+    ],
+];

@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 trait SignalHandler
 {
     private int $defaultSignal = 0;
+
     private array $signalHandlers = [];
 
     public function getDefaultSignal(): int

@@ -5,17 +5,18 @@ namespace App\Services;
 use App\Prompts\Contracts\ProgressContract;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
-use function Illuminate\Filesystem\join_paths;
-use function Symfony\Component\String\s;
 use Symfony\Component\Process\Process as SymfonyProcess;
+
+use function Illuminate\Filesystem\join_paths;
+
 class Helper
 {
     protected static false|null|string $os = false;
+
     protected static false|null|string $arch = false;
+
     protected static false|null|string $dist = false;
 
     public static array $langMap = [
@@ -40,7 +41,7 @@ class Helper
     {
         $format = 'Ymd\THi';
 
-        $format .= match($precision){
+        $format .= match ($precision) {
             's', 'second', 'seconds' => 's',
             'm', 'millisecond', 'milliseconds' => 's.v',
             'µ', 'u', 'microsecond', 'microseconds' => 's.u',
@@ -72,8 +73,8 @@ class Helper
             fn (Stringable $ext) => $ext->isNotEmpty(),
             fn (Stringable $ext) => $ext->prepend('.'),
         )
-        ->prepend($fileName)
-        ->value();
+            ->prepend($fileName)
+            ->value();
 
         $path = join_paths(static::tempBase(), $fileFull);
 
@@ -103,9 +104,10 @@ class Helper
     {
         return ! blank(\Phar::running(false));
     }
+
     public static function generateExtendedUlid(bool $md5 = false): string
     {
-        $extended = (string)Str::ulid() . '|' . Carbon::now('UTC')->toIso8601ZuluString('microsecond');
+        $extended = (string) Str::ulid().'|'.Carbon::now('UTC')->toIso8601ZuluString('microsecond');
 
         return $md5 ? md5($extended) : $extended;
     }
@@ -117,17 +119,16 @@ class Helper
         string $labelPrefix = '',
         bool $rx = true,
         bool $langX = false,
-        ): ProgressContract
-    {
-        $lang = static::$langMap[($langX ? 'langX.' : '') . ($rx ? 'r' : 't') . 'x'];
+    ): ProgressContract {
+        $lang = static::$langMap[($langX ? 'langX.' : '').($rx ? 'r' : 't').'x'];
         $verb = Str::title($lang[0]);
         $act = Str::title($lang[1]);
         $label = blank($labelPrefix) ? sprintf('%s file', $verb) : $labelPrefix;
-        $label = Str::of($label)->trim()->append(' ' . Str::trim($labelSuffix))->trim()->value();
+        $label = Str::of($label)->trim()->append(' '.Str::trim($labelSuffix))->trim()->value();
         $remote = Str::trim($remote);
 
         $progress->label($label)
-            ->hint( "{$verb} starting", 'initial')
+            ->hint("{$verb} starting", 'initial')
             ->hint("{$act}: {$remote}", 'active')
             ->hint("{$verb} completed: {$remote}", 'submit')
             ->number('', ['type' => 'fileSize', 'options' => [2]]);
@@ -139,8 +140,7 @@ class Helper
         ProgressContract $progress,
         string $remote,
         string $labelSuffix
-    ): ProgressContract
-    {
+    ): ProgressContract {
         return static::fileStreamProgress($progress, $remote, $labelSuffix);
     }
 
@@ -155,7 +155,7 @@ class Helper
 
     protected static function getArch(): ?string
     {
-        $cmd = match(static::Os()) {
+        $cmd = match (static::Os()) {
             'linux', 'darwin' => 'uname -m',
             'windows' => 'echo %PROCESSOR_ARCHITECTURE%',
             default => null,
@@ -167,13 +167,13 @@ class Helper
 
         try {
             $process = SymfonyProcess::fromShellCommandline($cmd)->enableOutput()->mustRun();
-        }catch (\Exception $e){
+        } catch (\Exception $e) {
             return null;
         }
 
         $output = $process->isSuccessful() ? static::firstLine($process->getOutput(), true) : null;
 
-        return match($output) {
+        return match ($output) {
             'x86_64', 'amd64' => 'x86_64',
             'aarch64', 'arm64' => 'aarch64',
             default => null
@@ -213,5 +213,4 @@ class Helper
 
         return $default;
     }
-
 }

@@ -6,19 +6,20 @@ use App\Prompts\Contracts\SpinnerContract;
 use App\Traits\ConfigableOpen;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
+
 class Spinner extends Prompt implements SpinnerContract
 {
-    use Macroable, Conditionable, ConfigableOpen;
+    use Conditionable, ConfigableOpen, Macroable;
 
     public int $interval = 100;
+
     public int $count = 0;
+
     public bool $static = false;
+
     protected int $pid;
 
-    public function __construct(public string $message = '')
-    {
-
-    }
+    public function __construct(public string $message = '') {}
 
     public function spin(\Closure $callback): mixed
     {
@@ -97,9 +98,9 @@ class Spinner extends Prompt implements SpinnerContract
     protected function eraseRenderedLines(): void
     {
         $this->clear();
-//        $lines = explode(PHP_EOL, $this->prevFrame);
-//        $this->moveCursor(-999, -count($lines) + 1);
-//        $this->eraseDown();
+        //        $lines = explode(PHP_EOL, $this->prevFrame);
+        //        $this->moveCursor(-999, -count($lines) + 1);
+        //        $this->eraseDown();
     }
 
     public function __destruct()
@@ -111,33 +112,33 @@ class Spinner extends Prompt implements SpinnerContract
         parent::__destruct();
     }
 
-//    public function clear(): void
-//    {
-//        $this->eraseRenderedLines();
-//    }
+    //    public function clear(): void
+    //    {
+    //        $this->eraseRenderedLines();
+    //    }
 
-//    protected function eraseRenderedLines(): void
-//    {
-//        if ($this->state === 'submit') {
-//            return;
-//        }
-//
-//        parent::eraseRenderedLines();
-//    }
-//
+    //    protected function eraseRenderedLines(): void
+    //    {
+    //        if ($this->state === 'submit') {
+    //            return;
+    //        }
+    //
+    //        parent::eraseRenderedLines();
+    //    }
+    //
 
-//
-//    protected function resetTerminal(bool $originalAsync): void
-//    {
-//        parent::resetTerminal($originalAsync);
-//
-//        $this->state = 'submit';
-//    }
-//
-//    public function message(string $message): static
-//    {
-//        $this->message = $message;
-//
-//        return $this;
-//    }
+    //
+    //    protected function resetTerminal(bool $originalAsync): void
+    //    {
+    //        parent::resetTerminal($originalAsync);
+    //
+    //        $this->state = 'submit';
+    //    }
+    //
+    //    public function message(string $message): static
+    //    {
+    //        $this->message = $message;
+    //
+    //        return $this;
+    //    }
 }

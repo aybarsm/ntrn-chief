@@ -10,9 +10,9 @@ class GitHub
 {
     public static function resolveRepository(string $input): array
     {
-        $input=trim($input);
+        $input = trim($input);
 
-        return match(true){
+        return match (true) {
             Str::isUrl($input) => static::resolveRepositoryFromUrl($input),
             Str::isMatch($input, '/^(?<org>[^\/]+)\/(?<repo>[^\/]+)$/') => static::resolveRepositoryDirect($input),
         };
@@ -38,6 +38,7 @@ class GitHub
 
         return static::handleMatches($matches);
     }
+
     public static function resolveRepositoryFromUrl(string $url): array
     {
         preg_match('/github\.com\/(?<org>[^\/]+)\/(?<repo>[^\/]+)/', $url, $matches);
@@ -72,6 +73,7 @@ class GitHub
         $input = static::isValidRepo(static::resolveRepository($input), $input, true);
 
         $tags = static::getTags($input);
+
         return blank($tags) ? $default : Arr::first($tags);
     }
 
@@ -86,11 +88,10 @@ class GitHub
     {
         $input = static::isValidRepo(static::resolveRepository($input), $input, true);
 
-        if (! blank(static::getReleases($input))){
+        if (! blank(static::getReleases($input))) {
             return static::apiGet($input['org'], $input['repo'], 'releases/latest');
         }
 
         return $default;
     }
-
 }

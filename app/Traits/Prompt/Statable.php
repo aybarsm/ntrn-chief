@@ -24,8 +24,8 @@ trait Statable
     {
         $path = $this->normaliseStatePath($path);
 
-        if ($searchDefault){
-            $defaultPath = '/(?<=^' . preg_quote($this->statesPath, '/') . ')[^.]+/';
+        if ($searchDefault) {
+            $defaultPath = '/(?<=^'.preg_quote($this->statesPath, '/').')[^.]+/';
             $defaultKey = Str::replaceMatches($defaultPath, 'default', $path, 1);
         }
 
