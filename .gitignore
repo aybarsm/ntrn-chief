@@ -6,7 +6,7 @@
 
 #Custom - App
 .env
-
+storage/
 #Custom - Default
 .DS_Store
 .AppleDouble
@@ -33,4 +33,3 @@ builds/
 dev/
 *.bak*
 *.bak*/
-storage/
