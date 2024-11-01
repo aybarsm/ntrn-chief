@@ -30,6 +30,7 @@ app/Commands/Dev/
 config/app_version
 .box_dump/
 builds/
+builds-new/
 dev/
 *.bak*
 *.bak*/
