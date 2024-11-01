@@ -5,6 +5,7 @@ use Illuminate\Support\Str;
 
 return [
     'name' => 'NTRN',
+    'build' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_build'))) : 'development'),
     'version' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_version'))) : app('git.version')),
     'os' => Helper::os(),
     'arch' => Helper::arch(),

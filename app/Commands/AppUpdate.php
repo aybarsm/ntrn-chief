@@ -68,15 +68,6 @@ class AppUpdate extends Command
             'line' => $e->getLine(),
         ];
 
-//        $log['process'] = [];
-//        if ($this->lastProcess){
-//            $log['process'] = [
-//                'exitCode' => $this->lastProcess->exitCode(),
-//                'output' => $this->lastProcess->output(),
-//                'errorOutput' => $this->lastProcess->errorOutput(),
-//            ];
-//        }
-
         $log['stats'] = [];
         if ($this->stats){
             $log['stats'] = [
@@ -99,20 +90,20 @@ class AppUpdate extends Command
         Log::error("Update failed", $log);
     }
 
-    protected function downloadFile(): bool
+    protected function httpGet(string $url, string $sink = ''): bool
     {
-        $this->request = Http::sink($this->tempFile)
-            ->timeout(config('app.update.timeout', 60))
+        $this->request = Http::timeout(config('app.update.timeout', 60))
             ->throw(fn (Response $response) => $response->status() !== 200)
             ->withOptions([
                 // Avoid decoupling the instances
                 'on_stats' => function (TransferStats $transferStats) use(&$stats) {
                     $stats = $transferStats;
                 }
-            ]);
+            ])
+            ->when(! blank($sink), fn (PendingRequest $request) => $request->sink($sink));
 
         try {
-            $this->response = $this->request->get($this->url);
+            $this->response = $this->request->get($url);
         } catch (\Exception $e){
             $this->stats = $stats;
             $this->logException($e);
@@ -120,7 +111,7 @@ class AppUpdate extends Command
         }
 
         $this->stats = $stats;
-        Log::notice("Update file from {$this->url} downloaded to {$this->tempFile}");
+        Log::notice("Http get to {$url} successful." . (! blank($sink) ? " File saved to {$sink}" : ''));
 
         return true;
     }
@@ -139,15 +130,23 @@ class AppUpdate extends Command
         }
     }
 
+    protected function setTempFile(...$params): void
+    {
+        $this->tempFile = join_paths(...$params);
+
+        if (File::exists($this->tempFile)){
+            File::delete($this->tempFile);
+            Log::notice("Existing update file removed: {$this->tempFile}");
+        }
+
+        $this->initalised = true;
+    }
+
     public function handle(): void
     {
         if ($this->option('assume-ver') !== null){
             $this->ver = $this->option('assume-ver');
         }
-
-//        if (! Helper::isPhar()){
-//            return;
-//        }
 
         $invalid = false;
         if ($invalid = ! in_array($this->strategy, ['DIRECT', 'GITHUB_RELEASE', 'GITHUB_TAG'])) {
@@ -163,30 +162,21 @@ class AppUpdate extends Command
         }
 
 //        $this->tempFile = join_paths(Helper::tempDir(true), 'ntrn_update');
-        $this->tempFile = join_paths(dirname(\Phar::running(false)), 'ntrn_update');
-        if (File::exists($this->tempFile)){
-            File::delete($this->tempFile);
-            Log::notice("Existing update file removed: {$this->tempFile}");
-        }
-        $this->initalised = true;
+//        $this->tempFile = join_paths(dirname(\Phar::running(false)), 'ntrn_update');
+//        if (File::exists($this->tempFile)){
+//            File::delete($this->tempFile);
+//            Log::notice("Existing update file removed: {$this->tempFile}");
+//        }
+//        $this->initalised = true;
 
         if ($this->strategy == 'DIRECT'){
-            if (! $this->downloadFile()){
-                return;
-            }
-            File::chmod($this->tempFile, octdec('0750'));
-
-            $process = $this->processCommand("{$this->tempFile} --version");
-
-            if ($process === false){
+            if ($this->httpGet($this->verQUrl)){
                 return;
             }
 
-            $version = Helper::firstLine($process->output());
-            preg_match('/v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/', $version, $verSegments);
-
+            preg_match($this->verQPattern, $this->response->body(), $verSegments);
             if (! Arr::has($verSegments, ['major', 'minor', 'patch'])) {
-                Log::warning("Version could not be parsed: {$version}");
+                Log::warning("Version could not be parsed: {$this->response->body()}");
                 return;
             }
 
@@ -201,14 +191,27 @@ class AppUpdate extends Command
             return;
         }
 
-        if (! $this->downloadFile()){
+        $runningPhar = \Phar::running(false);
+        $this->setTempFile(dirname($runningPhar), 'ntrn_update');
+
+        if (! $this->httpGet($this->url, $this->tempFile)){
             return;
         }
 
-        $runningPhar = \Phar::running(false);
+//        $pharStats = stat($runningPhar);
+//        File::chmod($this->tempFile, octdec($pharStats['mode']));
+
+        if (! windows_os()){
+            File::chmod($this->tempFile, fileperms($runningPhar));
+        }
 
         try {
-            File::move($this->tempFile, $runningPhar);
+            if ($this->option('no-cleanup')){
+                File::copy($this->tempFile, $runningPhar);
+            }else {
+                File::move($this->tempFile, $runningPhar);
+            }
+
         } catch (\Exception $e){
             $this->logException($e);
             return;
@@ -228,8 +231,8 @@ class AppUpdate extends Command
             return;
         }
 
-        if (! $this->option('no-cleanup') && $this->tempFile && File::exists(dirname($this->tempFile))){
-            File::deleteDirectory(dirname($this->tempFile));
+        if (! $this->option('no-cleanup') && ! blank($this->tempFile) && File::exists($this->tempFile)){
+            File::deleteDirectory($this->tempFile);
         }
     }
 }

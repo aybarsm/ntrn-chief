@@ -212,8 +212,11 @@ class AppBuild extends TaskingCommand
             $this->setTaskMessage("<comment>Old initial .phar file deleted.</comment>");
         }
 
-        File::put(config('dev.build.app_version'), $this->config('get', 'version'));
+        File::put(config('dev.build.app_version', config_path('app_version')), $this->config('get', 'version'));
         $this->setTaskMessage("<comment>app_version file created.</comment>");
+
+        File::put(config('dev.build.app_build', config_path('app_build')), $this->config('get', 'ts.safe'));
+        $this->setTaskMessage("<comment>app_build file created.</comment>");
 
         foreach(config('dev.build.exclude', []) as $excludeKey => $exclude){
             $this->setTaskMessage("<comment>Excluding: {$exclude}</comment>");
@@ -430,8 +433,15 @@ class AppBuild extends TaskingCommand
             return $isSignal ? self::SUCCESS : $this;
         }
 
-        if (File::exists(config('dev.build.app_version'))) {
-            File::delete(config('dev.build.app_version'));
+        $files = [
+            config('dev.build.app_version', config_path('app_version')),
+            config('dev.build.app_build', config_path('app_build')),
+        ];
+
+        foreach($files as $file){
+            if (File::exists($file)){
+                File::delete($file);
+            }
         }
 
         foreach($this->config('get', 'distributions', []) as $distribution){

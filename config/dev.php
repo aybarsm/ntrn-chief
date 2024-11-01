@@ -9,6 +9,7 @@ return (Helper::isPhar() ? [] : [
         'path' => join_paths(base_path(), 'builds'),
         'chmod' => '0755',
         'app_version' => config_path('app_version'),
+        'app_build' => config_path('app_build'),
         'backup' => [
             'path' => join_paths(base_path(), 'builds', 'backups'),
         ],
@@ -40,11 +41,11 @@ return (Helper::isPhar() ? [] : [
                     'remote' => 'bulk/php-8.3.12-micro-macos-x86_64.tar.gz',
                     'archiveFile' => 'micro.sfx'
                 ],
-                'windows-x86_64' => [
-                    'local' => 'php-8.3.12-max-micro-win.sfx',
-                    'remote' => 'windows/spc-max/php-8.3.12-micro-win.zip',
-                    'archiveFile' => 'micro.sfx'
-                ],
+//                'windows-x86_64' => [
+//                    'local' => 'php-8.3.12-max-micro-win.sfx',
+//                    'remote' => 'windows/spc-max/php-8.3.12-micro-win.zip',
+//                    'archiveFile' => 'micro.sfx'
+//                ],
             ],
         ],
 

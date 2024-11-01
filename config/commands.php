@@ -32,12 +32,12 @@ return [
             NunoMaduro\Collision\Adapters\Laravel\Commands\TestCommand::class,
             Illuminate\Foundation\Console\StubPublishCommand::class,
             Illuminate\Foundation\Console\VendorPublishCommand::class,
+
         ] : [
 //            App\Commands\AppUpdate::class,
         ]) + [
             LaravelZero\Framework\Commands\MakeCommand::class,
             LaravelZero\Framework\Commands\BuildCommand::class,
             LaravelZero\Framework\Commands\RenameCommand::class,
-            LaravelZero\Framework\Commands\InstallCommand::class,
         ],
 ];

@@ -18,8 +18,8 @@ class NtrnServiceProvider extends ServiceProvider
     public function register(): void
     {
         App::booted(function () {
-            Command::mixin(new \App\Mixins\CommandMixin(), true);
-            Command::forgetTask();
+//            Command::mixin(new \App\Mixins\CommandMixin(), true);
+//            Command::forgetTask();
             Ntrn::init('PromptTheme');
         });
 
