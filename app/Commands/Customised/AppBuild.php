@@ -242,6 +242,7 @@ class AppBuild extends TaskingCommand
                 if (! $this->option('leave-initial')) {
                     File::ensureDirectoryExists(dirname($phar));
                     File::move($initial, $phar);
+                    File::put("$phar.md5sum", File::hash($phar));
                 }
                 $this->setTaskMessage("<info>Compile was successful and output is at {$actualOutput}</info>");
             }else {
@@ -375,6 +376,7 @@ class AppBuild extends TaskingCommand
 
             $process = Process::timeout($this->getTimeout())->command("cat {$sfx['local']}  {$phar} > {$output}")->run();
             if ($process->successful()){
+                File::put("$output.md5sum", File::hash($output));
                 $this->setTaskMessage("<info>{$distribution['target']} built successfully at {$output}</info>");
                 if (! blank($chmod = config('dev.build.chmod')) && is_string($chmod) && is_numeric($chmod) && strlen($chmod) === 4) {
                     File::chmod($output, octdec(config('dev.build.chmod')));

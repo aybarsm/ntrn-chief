@@ -5,6 +5,9 @@ use function Illuminate\Filesystem\join_paths;
 
 return (Helper::isPhar() ? [] : [
     'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
+    'github' => [
+        'token' => env('DEV_GITHUB_TOKEN'),
+    ],
     'build' => [
         'path' => join_paths(base_path(), 'builds'),
         'chmod' => '0755',
@@ -41,11 +44,6 @@ return (Helper::isPhar() ? [] : [
                     'remote' => 'bulk/php-8.3.12-micro-macos-x86_64.tar.gz',
                     'archiveFile' => 'micro.sfx'
                 ],
-//                'windows-x86_64' => [
-//                    'local' => 'php-8.3.12-max-micro-win.sfx',
-//                    'remote' => 'windows/spc-max/php-8.3.12-micro-win.zip',
-//                    'archiveFile' => 'micro.sfx'
-//                ],
             ],
         ],
 

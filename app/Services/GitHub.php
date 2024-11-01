@@ -45,32 +45,52 @@ class GitHub
         return static::handleMatches($matches);
     }
 
-    public static function apiGet(string $url)
+    public static function apiGet(string $org, string $repo, string $path): array
     {
-        return Http::withHeaders([
+        $url = "https://api.github.com/repos/{$org}/{$repo}/{$path}";
+
+        $request = Http::withHeaders([
             'Accept' => 'application/vnd.github+json',
-        ])->get($url);
+        ]);
+
+        if (! blank(config('dev.github.token'))) {
+            $request->withToken(config('dev.github.token'));
+        }
+
+        return $request->get($url)->json();
     }
 
-    public static function getTags(string $input): \Illuminate\Http\Client\Response
+    public static function getTags(string $input): array
     {
         $input = static::isValidRepo(static::resolveRepository($input), $input, true);
-        $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/tags";
 
-        return static::apiGet($url);
+        return static::apiGet($input['org'], $input['repo'], 'tags');
     }
 
-    public static function tagLatest(string $input): string
-    {
-        return static::getTags($input)->json('0.name');
-    }
-
-    public static function releaseLatest(string $input): string
+    public static function tagLatest(string $input, mixed $default = null): mixed
     {
         $input = static::isValidRepo(static::resolveRepository($input), $input, true);
-        $url = "https://api.github.com/repos/{$input['org']}/{$input['repo']}/releases/latest";
 
-        return static::apiGet($url)->json('tag_name');
+        $tags = static::getTags($input);
+        return blank($tags) ? $default : Arr::first($tags);
+    }
+
+    public static function getReleases(string $input): array
+    {
+        $input = static::isValidRepo(static::resolveRepository($input), $input, true);
+
+        return static::apiGet($input['org'], $input['repo'], 'releases');
+    }
+
+    public static function releaseLatest(string $input, mixed $default = null): mixed
+    {
+        $input = static::isValidRepo(static::resolveRepository($input), $input, true);
+
+        if (! blank(static::getReleases($input))){
+            return static::apiGet($input['org'], $input['repo'], 'releases/latest');
+        }
+
+        return $default;
     }
 
 }
