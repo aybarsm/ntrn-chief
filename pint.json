@@ -1,0 +1,11 @@
+{
+    "preset": "laravel",
+    "exclude": [
+        "app/Commands/Dev",
+        "builds",
+        "dev"
+    ],
+    "notName": [
+        "*.bak*"
+    ]
+}
