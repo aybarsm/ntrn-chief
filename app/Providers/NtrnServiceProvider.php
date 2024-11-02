@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Prompts\Progress;
+use App\Prompts\Running;
 use App\Prompts\Spinner;
 use App\Prompts\Themes\Ntrn\ProgressRenderer;
+use App\Prompts\Themes\Ntrn\RunningRenderer;
 use App\Prompts\Themes\Ntrn\SpinnerRenderer;
 use App\Traits\Configable;
 use Illuminate\Support\Facades\App;
@@ -107,6 +109,7 @@ class NtrnServiceProvider extends ServiceProvider
             Table::class => TableRenderer::class,
             Progress::class => ProgressRenderer::class,
             Clear::class => ClearRenderer::class,
+            Running::class => RunningRenderer::class,
         ]);
 
         \Laravel\Prompts\Prompt::theme('ntrn');

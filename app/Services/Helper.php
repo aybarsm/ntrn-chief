@@ -5,11 +5,14 @@ namespace App\Services;
 use App\Attributes\Console\CommandTask;
 use App\Contracts\Console\TaskingCommandContract;
 use App\Prompts\Contracts\ProgressContract;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Symfony\Component\Process\Process as SymfonyProcess;
+use Illuminate\Container\Attributes\Config;
 
 use function Illuminate\Filesystem\join_paths;
 
@@ -134,6 +137,35 @@ class Helper
         }
 
         return array_merge($always, $env);
+    }
+
+    public static function resolveVersion(string $verInfo, string $pattern, mixed $default = null, bool $segments = false): mixed
+    {
+        $req = ['major', 'minor', 'patch'];
+        preg_match($pattern, $verInfo, $ver);
+        if (! Arr::has($ver, $req)) {
+            return $default;
+        }
+
+        return $segments ? Arr::only($ver, $req) : "{$ver['major']}.{$ver['minor']}.{$ver['patch']}";
+    }
+
+    public static function appNextVer(int $step, string $ver = '', string $verPattern = ''): string
+    {
+        $ver = blank($ver) ? config('app.version') : $ver;
+        $verPattern = blank($verPattern) ? config('app.version_pattern') : $verPattern;
+        throw_if($step < 0 || $step > 2, "Step [{$step}] is invalid. Use 0 for patch, 1 for minor, or 2 for major.");
+
+        $ver = static::resolveVersion($ver, $verPattern, '', true);
+        $key = match($step) {
+            1 => 'minor',
+            2 => 'major',
+            default => 'patch',
+        };
+
+        $ver[$key] = (int) $ver[$key] + 1;
+
+        return Str::matchesReplace($verPattern, $ver);
     }
 
     public static function tempBase(): string

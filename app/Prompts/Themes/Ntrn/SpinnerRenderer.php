@@ -27,7 +27,7 @@ class SpinnerRenderer extends LaravelRenderer
         return $this->line(" {$this->cyan($frame)} {$spinner->message}");
     }
 
-    public function __invoke(Spinner|\Laravel\Prompts\Spinner $spinner): string
+    public function __invoke(Spinner $spinner): string
     {
         return match ($spinner->state) {
             default => $this->defaultSpinner($spinner),

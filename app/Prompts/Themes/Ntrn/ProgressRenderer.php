@@ -59,49 +59,5 @@ class ProgressRenderer extends LaravelRenderer
             $messageEligible,
             fn () => $this->{$messageMethod}($message),
         );
-
-        //        return match ($progress->state) {
-        //            'initial' => $this
-        //                ->box(
-        //                    title: $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
-        //                    body: $this->dim($filled),
-        //                    color: 'blue',
-        //                    info: $progress->initialMessage,
-        //            ),
-        //            'submit' => $this
-        //                ->box(
-        //                    $this->dim($this->truncate($label, $progress->terminal()->cols() - 6)),
-        //                    $this->dim($filled),
-        //                    color: 'green',
-        //                    info: $info,
-        //                ),
-        //            'error' => $this
-        //                ->box(
-        //                    $this->truncate($label, $progress->terminal()->cols() - 6),
-        //                    $this->dim($filled),
-        //                    color: 'red',
-        //                    info: $info,
-        //                ),
-        //            'cancel' => $this
-        //                ->box(
-        //                    $this->truncate($label, $progress->terminal()->cols() - 6),
-        //                    $this->dim($filled),
-        //                    color: 'red',
-        //                    info: $info,
-        //                )
-        //                ->error($progress->cancelMessage),
-        //            default => $this
-        //                ->box(
-        //                    $this->cyan($this->truncate($label, $progress->terminal()->cols() - 6)),
-        //                    $this->dim($filled),
-        //                    color: 'yellow',
-        //                    info: $progress->progress.'/'.$progress->total,
-        //                )
-        //                ->when(
-        //                    $progress->hint,
-        //                    fn () => $this->hint($progress->hint),
-        //                    fn () => $this->newLine() // Space for errors
-        //                )
-        //        };
     }
 }

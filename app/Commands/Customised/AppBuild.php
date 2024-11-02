@@ -21,13 +21,14 @@ use Psr\Http\Message\ResponseInterface;
 
 use function Illuminate\Filesystem\join_paths;
 
+#[CommandTask('checkRepoStatus', null, 'Check repo status', true)]
 #[CommandTask('setParameters', null, 'Set build parameters', true)]
 #[CommandTask('prepare', null, 'Prepare compile environment', true)]
 #[CommandTask('compile', IndicatorType::SPINNER, 'Compile .phar file', true)]
-#[CommandTask('checkDistributions', IndicatorType::SPINNER, 'Check distributions', false, true)]
+#[CommandTask('checkDistributions', null, 'Check distributions', false, true)]
 #[CommandTask('downloadSfx', IndicatorType::PROGRESS, 'Download Micro Sfx')]
-#[CommandTask('extractSfx', IndicatorType::SPINNER, 'Extract Micro Sfx')]
-#[CommandTask('buildBinaries', IndicatorType::SPINNER, 'Build distribution binaries')]
+#[CommandTask('extractSfx', null, 'Extract Micro Sfx')]
+#[CommandTask('buildBinaries', null, 'Build distribution binaries')]
 class AppBuild extends TaskingCommand
 {
     use Configable;
@@ -51,6 +52,25 @@ class AppBuild extends TaskingCommand
         });
 
         $this->executeTasks();
+    }
+
+    protected function checkRepoStatus(): bool
+    {
+        $this->setTaskMessage('<comment>Checking repository status...</comment>');
+
+        $status = Process::timeout($this->getTimeout())
+            ->command('git status --porcelain')
+            ->run();
+
+        if ($status->successful()) {
+            $this->setTaskMessage('<info>Repository is clean.</info>');
+
+            return true;
+        }
+
+        $this->setTaskMessage('<error>Repository is not clean. Please commit or stash your changes.</error>');
+
+        return false;
     }
 
     protected function restoreBackups(): void

@@ -4,6 +4,7 @@ namespace App\Commands;
 
 use App\Framework\Commands\Command;
 use App\Services\GitHub;
+use App\Services\Helper;
 use App\Traits\Configable;
 use GuzzleHttp\TransferStats;
 use Illuminate\Console\Scheduling\Schedule;
@@ -174,7 +175,11 @@ class AppUpdate extends Command
             $this->ver = $this->option('assume-ver');
         }
 
-        $this->ver = $this->getVer($this->ver, $this->verPattern);
+        $this->ver = Helper::resolveVersion($this->ver, $this->verPattern, '');
+        if (blank($this->ver)) {
+            Log::error("App version could not be parsed: {$this->ver}");
+            return;
+        }
 
         if (blank($this->ver)) {
             return;
@@ -215,22 +220,16 @@ class AppUpdate extends Command
             }
 
             $versionInfo = $latest['tag_name'];
+            // Implement the rest of the logic
         } else {
             Log::warning("Update strategy not implemented: {$this->strategy}");
 
             return;
         }
 
-        preg_match($this->updateVerPattern, $versionInfo, $updateVerSegments);
-        if (! Arr::has($updateVerSegments, ['major', 'minor', 'patch'])) {
-            Log::warning("Version could not be parsed: {$versionInfo}");
-
-            return;
-        }
-
-        $this->updateVer = $this->getVer($versionInfo, $this->updateVerPattern);
-
+        $this->updateVer = Helper::resolveVersion($versionInfo, $this->updateVerPattern, '');
         if (blank($this->updateVer)) {
+            Log::error("Update version could not be parsed: {$versionInfo}");
             return;
         }
 
