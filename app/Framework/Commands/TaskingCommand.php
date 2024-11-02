@@ -6,7 +6,7 @@ use App\Contracts\Console\TaskingCommandContract;
 use App\Enums\IndicatorType;
 use App\Prompts\Progress;
 use App\Prompts\Spinner;
-use App\Services\Console\Task;
+use App\Services\Helper;
 use App\Traits\Command\SignalHandler;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
@@ -44,7 +44,7 @@ abstract class TaskingCommand extends Command implements SignalableCommandInterf
 
     protected function executeTasks(): void
     {
-        $this->tasks = Task::getCommandTasks($this);
+        $this->tasks = Helper::getCommandTasks($this);
         $this->cursor = new Cursor($this->output);
         \App\Prompts\Prompt::setOutput($this->output);
         \App\Prompts\Prompt::setCursor($this->cursor);

@@ -21,6 +21,7 @@
         "illuminate/encryption": "^11.29",
         "illuminate/http": "^11.5",
         "illuminate/log": "^11.5",
+        "illuminate/queue": "^11.30",
         "illuminate/redis": "^11.5",
         "illuminate/support": "^11.29",
         "illuminate/translation": "^11.29",
@@ -33,11 +34,13 @@
         "symfony/uid": "^7.1"
     },
     "require-dev": {
+        "barryvdh/laravel-ide-helper": "^3.2",
         "brick/varexporter": "^0.5.0",
         "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.15.2",
         "mockery/mockery": "^1.6.11",
         "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-watch": "^3.0",
         "swoole/ide-helper": "@dev"
     },
     "autoload": {

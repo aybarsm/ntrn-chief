@@ -12,12 +12,7 @@ return [
     'dist' => Helper::dist(),
     'env' => (Helper::isPhar() ? 'production' : 'local'),
     'timezone' => 'UTC',
-    'providers' => [
-        App\Providers\AppServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        App\Providers\NtrnServiceProvider::class,
-    ],
+    'providers' => Helper::appProviders(),
     'update' => [
         'strategy' => env('APP_UPDATE_STRATEGY', 'DIRECT'),
         'url' => env('APP_UPDATE_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist()),
