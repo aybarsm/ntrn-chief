@@ -7,6 +7,6 @@ return [
         'list' => [
             App\Mixins\StringableMixin::class,
             App\Mixins\StrMixin::class,
-        ]
-    ]
+        ],
+    ],
 ];

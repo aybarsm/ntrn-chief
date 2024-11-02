@@ -42,7 +42,7 @@ class Helper
             $env = [
                 //
             ];
-        }else {
+        } else {
             $env = [
                 \LaravelZero\Framework\Commands\StubPublishCommand::class,
                 \Illuminate\Foundation\Console\VendorPublishCommand::class,
@@ -63,7 +63,7 @@ class Helper
             $env = [
                 //
             ];
-        }else {
+        } else {
             $env = [
                 //
             ];
@@ -93,7 +93,7 @@ class Helper
                 \Illuminate\Foundation\Console\StubPublishCommand::class,
                 \Illuminate\Foundation\Console\VendorPublishCommand::class,
             ];
-        }else {
+        } else {
             $env = [
                 \App\Commands\AppUpdate::class,
             ];
@@ -106,7 +106,7 @@ class Helper
     {
         $section = Str::lower($section);
 
-        return match($section) {
+        return match ($section) {
             'add' => static::appCommandsAdd(),
             'hidden' => static::appCommandsHidden(),
             'remove' => static::appCommandsRemove(),
@@ -129,11 +129,8 @@ class Helper
 
         if (static::isPhar()) {
             $env = [];
-        }else {
+        } else {
             $env = [];
-            if (class_exists(\Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class)) {
-                $env[] = \Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class;
-            }
         }
 
         return array_merge($always, $env);

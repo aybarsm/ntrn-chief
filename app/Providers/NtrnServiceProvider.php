@@ -6,12 +6,10 @@ use App\Prompts\Progress;
 use App\Prompts\Spinner;
 use App\Prompts\Themes\Ntrn\ProgressRenderer;
 use App\Prompts\Themes\Ntrn\SpinnerRenderer;
-use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Illuminate\Support\Stringable;
 use Laravel\Prompts\Clear;
 use Laravel\Prompts\ConfirmPrompt;
 use Laravel\Prompts\MultiSearchPrompt;
@@ -48,29 +46,18 @@ class NtrnServiceProvider extends ServiceProvider
         App::booted(function () {
             static::initPromptTheme();
         });
-
-//        if (! Helper::isPhar() &&  $this->app->isLocal() && class_exists(\Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class)) {
-//            $this->app->register(\Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class);
-//        }
     }
 
     public function boot(): void
     {
-//        $this->loadMixins();
-//        Stringable::mixin(new \App\Mixins\StringableMixin, true);
-//        Str::mixin(new \App\Mixins\StrMixin, true);
-    }
-
-    protected function resolveMixinBind(string $mixin): string
-    {
-        throw_if(! class_exists($mixin), new \Exception("Mixin class [{$mixin}] not found."));
-
-//        $bind = Str::match(config('ntrn.mixins.pattern', '/@mixin\s*([^\s*]+)/'));
+        $this->loadMixins();
     }
 
     /** @noinspection PhpUnreachableStatementInspection */
     protected function addMixin(string $mixin): void
     {
+        throw_if(blank($mixin), new \Exception('Mixin class name cannot be empty.'));
+
         $cnfKey = str($mixin)
             ->replace('\\', '_')
             ->lower()
@@ -86,19 +73,18 @@ class NtrnServiceProvider extends ServiceProvider
         $docComment = (new \ReflectionClass($mixin))?->getDocComment();
         throw_if($docComment === false, "Mixin class [{$mixin}] does not have a doc comment.");
 
-        $bind = Str::match($docComment, config('ntrn.mixins.pattern', '/@mixin\s*([^\s*]+)/'));
+        $bind = Str::match(config('ntrn.mixins.pattern', '/@mixin\s*([^\s*]+)/'), $docComment);
         throw_if(blank($bind), "Mixin class [{$mixin}] does not have a pattern eligible bind.");
         throw_if(! class_exists($bind), "Mixin [{$mixin}] class bind of [{$bind}] not found.");
         throw_if(! method_exists($bind, 'mixin'), "Mixin [{$mixin}] class bind of [{$bind}] does not have a mixin method.");
 
-        $bind::mixin(new $mixin(), (bool) config('ntrn.mixins.replace', true));
+        $bind::mixin(new $mixin, (bool) config('ntrn.mixins.replace', true));
         $this->config('set', $cnfKey, true);
     }
 
     protected function loadMixins(): void
     {
-        foreach(config('ntrn.mixins.list', []) as $mixinOrder => $mixin) {
-            throw_if(blank($mixin), new \Exception("Mixin class [#{$mixinOrder}] cannot be empty."));
+        foreach (config('ntrn.mixins.list', []) as $mixin) {
             $this->addMixin($mixin);
         }
     }
