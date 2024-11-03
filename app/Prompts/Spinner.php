@@ -4,13 +4,9 @@ namespace App\Prompts;
 
 use App\Prompts\Contracts\SpinnerContract;
 use App\Traits\ConfigableOpen;
-use Illuminate\Support\Traits\Conditionable;
-use Illuminate\Support\Traits\Macroable;
 
 class Spinner extends Prompt implements SpinnerContract
 {
-    use Conditionable, ConfigableOpen, Macroable;
-
     public int $interval = 100;
 
     public int $count = 0;
@@ -19,7 +15,10 @@ class Spinner extends Prompt implements SpinnerContract
 
     protected int $pid;
 
-    public function __construct(public string $message = '') {}
+    public function __construct(public string $message = '')
+    {
+        //
+    }
 
     public function spin(\Closure $callback): mixed
     {
@@ -95,7 +94,7 @@ class Spinner extends Prompt implements SpinnerContract
         return true;
     }
 
-    protected function eraseRenderedLines(): void
+    public function eraseRenderedLines(): void
     {
         $this->clear();
         //        $lines = explode(PHP_EOL, $this->prevFrame);

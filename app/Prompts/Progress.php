@@ -11,8 +11,6 @@ use Symfony\Component\Console\Cursor;
 
 class Progress extends Prompt implements ProgressContract
 {
-    use Conditionable, ConfigableOpen, Macroable;
-
     public int $progress = 0;
 
     public int $total = 0;

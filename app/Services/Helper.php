@@ -13,11 +13,12 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Symfony\Component\Process\Process as SymfonyProcess;
 use Illuminate\Container\Attributes\Config;
-
+use App\Traits\Services\Helper\Reflector;
 use function Illuminate\Filesystem\join_paths;
 
 class Helper
 {
+    use Reflector;
     protected static false|null|string $os = false;
 
     protected static false|null|string $arch = false;
@@ -154,16 +155,17 @@ class Helper
     {
         $ver = blank($ver) ? config('app.version') : $ver;
         $verPattern = blank($verPattern) ? config('app.version_pattern') : $verPattern;
-        throw_if($step < 0 || $step > 2, "Step [{$step}] is invalid. Use 0 for patch, 1 for minor, or 2 for major.");
+        throw_if($step < 1 || $step > 3, "Step [{$step}] is invalid. Use 1 for patch, 2 for minor, or 3 for major.");
 
         $ver = static::resolveVersion($ver, $verPattern, '', true);
-        $key = match($step) {
-            1 => 'minor',
-            2 => 'major',
-            default => 'patch',
-        };
-
-        $ver[$key] = (int) $ver[$key] + 1;
+        $ver = array_merge(
+            $ver,
+            match($step) {
+                3 => ['major' => $ver['major'] + 1, 'minor' => 0, 'patch' => 0],
+                2 => ['minor' => $ver['minor'] + 1, 'patch' => 0],
+                default => ['patch' => $ver['patch'] + 1],
+            }
+        );
 
         return Str::matchesReplace($verPattern, $ver);
     }
@@ -229,6 +231,17 @@ class Helper
         }
 
         return $path;
+    }
+
+    public static function composer(string $path = '', mixed $default = null): mixed
+    {
+        try{
+            $json = File::json(base_path('composer.json'));
+        }catch(\Exception $e){
+            return $default;
+        }
+
+        return blank($json) ? $default : Arr::get($json, $path, $default);
     }
 
     public static function firstLine(string $str, bool $lower = false): string

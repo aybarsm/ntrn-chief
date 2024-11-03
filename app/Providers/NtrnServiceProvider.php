@@ -2,42 +2,11 @@
 
 namespace App\Providers;
 
-use App\Prompts\Progress;
-use App\Prompts\Running;
-use App\Prompts\Spinner;
-use App\Prompts\Themes\Ntrn\ProgressRenderer;
-use App\Prompts\Themes\Ntrn\RunningRenderer;
-use App\Prompts\Themes\Ntrn\SpinnerRenderer;
 use App\Traits\Configable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Laravel\Prompts\Clear;
-use Laravel\Prompts\ConfirmPrompt;
-use Laravel\Prompts\MultiSearchPrompt;
-use Laravel\Prompts\MultiSelectPrompt;
-use Laravel\Prompts\Note;
-use Laravel\Prompts\PasswordPrompt;
-use Laravel\Prompts\PausePrompt;
-use Laravel\Prompts\SearchPrompt;
-use Laravel\Prompts\SelectPrompt;
-use Laravel\Prompts\SuggestPrompt;
-use Laravel\Prompts\Table;
-use Laravel\Prompts\TextareaPrompt;
-use Laravel\Prompts\TextPrompt;
-use Laravel\Prompts\Themes\Default\ClearRenderer;
-use Laravel\Prompts\Themes\Default\ConfirmPromptRenderer;
-use Laravel\Prompts\Themes\Default\MultiSearchPromptRenderer;
-use Laravel\Prompts\Themes\Default\MultiSelectPromptRenderer;
-use Laravel\Prompts\Themes\Default\NoteRenderer;
-use Laravel\Prompts\Themes\Default\PasswordPromptRenderer;
-use Laravel\Prompts\Themes\Default\PausePromptRenderer;
-use Laravel\Prompts\Themes\Default\SearchPromptRenderer;
-use Laravel\Prompts\Themes\Default\SelectPromptRenderer;
-use Laravel\Prompts\Themes\Default\SuggestPromptRenderer;
-use Laravel\Prompts\Themes\Default\TableRenderer;
-use Laravel\Prompts\Themes\Default\TextareaPromptRenderer;
-use Laravel\Prompts\Themes\Default\TextPromptRenderer;
 
 class NtrnServiceProvider extends ServiceProvider
 {
@@ -93,25 +62,21 @@ class NtrnServiceProvider extends ServiceProvider
 
     protected static function initPromptTheme(): void
     {
-        \Laravel\Prompts\Prompt::addTheme('ntrn', [
-            TextPrompt::class => TextPromptRenderer::class,
-            TextareaPrompt::class => TextareaPromptRenderer::class,
-            PasswordPrompt::class => PasswordPromptRenderer::class,
-            SelectPrompt::class => SelectPromptRenderer::class,
-            MultiSelectPrompt::class => MultiSelectPromptRenderer::class,
-            ConfirmPrompt::class => ConfirmPromptRenderer::class,
-            PausePrompt::class => PausePromptRenderer::class,
-            SearchPrompt::class => SearchPromptRenderer::class,
-            MultiSearchPrompt::class => MultiSearchPromptRenderer::class,
-            SuggestPrompt::class => SuggestPromptRenderer::class,
-            Spinner::class => SpinnerRenderer::class,
-            Note::class => NoteRenderer::class,
-            Table::class => TableRenderer::class,
-            Progress::class => ProgressRenderer::class,
-            Clear::class => ClearRenderer::class,
-            Running::class => RunningRenderer::class,
-        ]);
+        $default = \App\Prompts\Prompt::getTheme('default');
 
-        \Laravel\Prompts\Prompt::theme('ntrn');
+        $ntrn = Arr::where(Arr::mapWithKeys($default, function ($renderer, $prompt) {
+            $prompt = Str::replace('Laravel\\Prompts\\', 'App\\Prompts\\', $prompt);
+            $renderer = Str::replace('Laravel\\Prompts\\Themes\\Default\\', 'App\\Prompts\\Themes\\Ntrn\\', $renderer);
+
+            return [$prompt => $renderer];
+        }), fn ($renderer, $prompt) => class_exists($renderer) && class_exists($prompt));
+
+        $additional = [
+            \App\Prompts\Running::class => \App\Prompts\Themes\Ntrn\RunningRenderer::class,
+        ];
+
+        \App\Prompts\Prompt::addTheme('ntrn', array_merge($ntrn, $additional));
+
+        \App\Prompts\Prompt::theme('ntrn');
     }
 }

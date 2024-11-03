@@ -103,7 +103,6 @@ abstract class TaskingCommand extends Command implements SignalableCommandInterf
             if ($result === null && $task->skipRest) {
                 break;
             }
-            $cursor = null;
         }
     }
 }

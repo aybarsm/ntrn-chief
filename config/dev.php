@@ -6,8 +6,8 @@ use function Illuminate\Filesystem\join_paths;
 
 return Helper::isPhar() ? [] : [
     'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
-    'github' => [
-        'token' => env('DEV_GITHUB_TOKEN'),
+    'git' => [
+        'token' => env('DEV_GIT_TOKEN'),
     ],
     'build' => [
         'path' => join_paths(base_path(), 'builds'),
@@ -19,6 +19,7 @@ return Helper::isPhar() ? [] : [
         ],
         'exclude' => [
             join_paths(base_path(), 'app', 'Commands', 'Dev'),
+            config_path('dev.php'),
         ],
         'micro' => [
             'path' => join_paths(base_path(), 'builds', 'utils', 'micro'),

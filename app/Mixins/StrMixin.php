@@ -2,6 +2,8 @@
 
 namespace App\Mixins;
 
+use Illuminate\Support\Collection;
+
 /** @mixin \Illuminate\Support\Str */
 class StrMixin
 {
@@ -11,6 +13,28 @@ class StrMixin
             $init = static::replaceMatches('/^\s*[\r\n]+|[\r\n]+\s*\z/', '', $str);
 
             return static::replaceMatches('/(\n\s*){2,}/', "\n", $init);
+        };
+    }
+
+    public function lines(): \Closure
+    {
+        return function (string $str, int $limit = -1, int $flags = 0, bool $removeEmpty = false): Collection
+        {
+            $rtr = static::of($str);
+            $rtr = $removeEmpty ? $rtr->removeEmptyLines() : $rtr;
+
+            return $rtr->split("/((\r?\n)|(\r\n?))/", $limit, $flags);
+        };
+    }
+
+    public static function firstLine(): \Closure
+    {
+        return function (string $str): string
+        {
+            return static::of($str)
+                ->removeEmptyLines()
+                ->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)
+                ->first();
         };
     }
 

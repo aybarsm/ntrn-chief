@@ -14,6 +14,11 @@ return [
     'timezone' => 'UTC',
     'providers' => Helper::appProviders(),
     'update' => [
+        'auth' => [
+            'type' => env('APP_UPDATE_AUTH_TYPE', 'Token'),
+            'token' => env('APP_UPDATE_AUTH_TOKEN'),
+            'token_type' => env('APP_UPDATE_AUTH_TOKEN_TYPE', 'Bearer'),
+        ],
         'strategy' => env('APP_UPDATE_STRATEGY', 'DIRECT'),
         'url' => env('APP_UPDATE_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist()),
         'version' => [

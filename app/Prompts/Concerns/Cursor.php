@@ -9,7 +9,7 @@ trait Cursor
     public function hideCursor(): void
     {
         if (! static::$cursorHidden) {
-            static::$cursor->hide();
+            static::cursor()->hide();
         }
 
         static::$cursorHidden = true;
@@ -18,7 +18,7 @@ trait Cursor
     public function showCursor(): void
     {
         if (static::$cursorHidden) {
-            static::$cursor->show();
+            static::cursor()->show();
         }
     }
 
@@ -29,16 +29,16 @@ trait Cursor
 
     public function moveCursor(int $x, int $y = 0): void
     {
-        static::$cursor->moveToPosition($x, $y);
+        static::cursor()->moveToPosition($x, $y);
     }
 
     public function moveCursorToColumn(int $column): void
     {
-        static::$cursor->moveToColumn($column);
+        static::cursor()->moveToColumn($column);
     }
 
     public function moveCursorUp(int $lines): void
     {
-        static::$cursor->moveUp($lines);
+        static::cursor()->moveUp($lines);
     }
 }

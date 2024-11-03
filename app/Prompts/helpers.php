@@ -2,30 +2,182 @@
 
 namespace App\Prompts;
 
+use App\Services\Helper;
 use Closure;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+
+if (! function_exists('\App\Prompts\text')) {
+    function text(...$params): string
+    {
+        return (new TextPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\textarea')) {
+    function textarea(...$params): string
+    {
+        return (new TextareaPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\password')) {
+    function password(...$params): string
+    {
+        return (new PasswordPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\select')) {
+    function select(...$params): int|string
+    {
+        return (new SelectPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\multiselect')) {
+    function multiselect(...$params): array
+    {
+        return (new MultiSelectPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\confirm')) {
+    function confirm(...$params): bool
+    {
+        return (new ConfirmPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\pause')) {
+    function pause(...$params): bool
+    {
+        return (new PausePrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\clear')) {
+    function clear(): void
+    {
+        (new Clear)->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\suggest')) {
+    function suggest(...$params): string
+    {
+        return (new SuggestPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\search')) {
+    function search(...$params): int|string
+    {
+        return (new SearchPrompt(...$params))->prompt();
+    }
+}
+
+if (! function_exists('\App\Prompts\multisearch')) {
+    function multisearch(...$params): array
+    {
+        return (new MultiSearchPrompt(...$params))->prompt();
+    }
+}
 
 if (! function_exists('\App\Prompts\spin')) {
-    function spin(string $message = '', ?Closure $callback = null): mixed
+    function spin(...$params): mixed
     {
-        $spin = new \App\Prompts\Spinner($message);
+        $spinner = new Spinner(...$params);
 
-        if ($callback !== null) {
-            return $spin->spin($callback);
+        $cbKey = Arr::has($params, 'callback') ? 'callback' : 1;
+        if (isset($params[$cbKey]) && is_callable($params[$cbKey])) {
+            return $spinner->spin($params[$cbKey]);
         }
 
-        return $spin;
+        return $spinner;
+    }
+}
+
+if (! function_exists('\App\Prompts\note')) {
+    function note(...$params): void
+    {
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\error')) {
+    function error(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'error']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\warning')) {
+    function warning(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'warning']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\alert')) {
+    function alert(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'alert']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\info')) {
+    function info(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'info']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\intro')) {
+    function intro(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'intro']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\outro')) {
+    function outro(...$params): void
+    {
+        $params = array_merge($params, ['type' => 'outro']);
+        (new Note(...$params))->display();
+    }
+}
+
+if (! function_exists('\App\Prompts\table')) {
+    function table(...$params): void
+    {
+        (new Table(...$params))->display();
     }
 }
 
 if (! function_exists('\App\Prompts\progress')) {
-    function progress(string $label, iterable|int $steps = 0, ?Closure $callback = null, string $hint = ''): array|Progress
+    function progress(...$params): array|Progress
     {
-        $progress = new \App\Prompts\Progress($label, $steps, $hint);
+        $progress = new Progress(...$params);
 
-        if ($callback !== null) {
-            return $progress->map($callback);
+        $cbKey = Arr::has($params, 'steps') ? 'steps' : Helper::getMethodParameterPosition(Progress::class, '__construct', 'steps');
+
+        if (isset($params[$cbKey]) && is_callable($params[$cbKey])) {
+            return $progress->map($params[$cbKey]);
         }
 
         return $progress;
+    }
+}
+
+if (! function_exists('\App\Prompts\form')) {
+    function form(): FormBuilder
+    {
+        return new FormBuilder;
     }
 }
