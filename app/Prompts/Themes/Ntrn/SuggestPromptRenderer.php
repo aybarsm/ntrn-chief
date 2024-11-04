@@ -6,6 +6,7 @@ use App\Prompts\SuggestPrompt;
 use Laravel\Prompts\Themes\Contracts\Scrolling;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsScrollbars;
+
 class SuggestPromptRenderer extends Renderer implements Scrolling
 {
     use DrawsBoxes;

@@ -5,6 +5,7 @@ namespace App\Prompts\Themes\Ntrn;
 use App\Prompts\ConfirmPrompt;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
 use Laravel\Prompts\Themes\Default\Renderer as LaravelRenderer;
+
 class ConfirmPromptRenderer extends LaravelRenderer
 {
     use DrawsBoxes;

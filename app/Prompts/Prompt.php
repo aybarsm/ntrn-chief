@@ -2,15 +2,16 @@
 
 namespace App\Prompts;
 
+use App\Traits\ConfigableOpen;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
 use Laravel\Prompts\Prompt as LaravelPrompt;
 use Symfony\Component\Console\Cursor;
-use App\Traits\ConfigableOpen;
+
 abstract class Prompt extends LaravelPrompt implements Contracts\PromptContract
 {
-    use Macroable, Conditionable, ConfigableOpen, Concerns\Cursor, Concerns\ThemesExtended, Concerns\Maker;
+    use Concerns\Cursor, Concerns\Maker, Concerns\ThemesExtended, Conditionable, ConfigableOpen, Macroable;
 
     protected static Cursor $cursor;
 

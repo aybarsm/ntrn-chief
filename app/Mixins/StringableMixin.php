@@ -8,6 +8,8 @@ use Illuminate\Support\Stringable;
 /** @mixin \Illuminate\Support\Stringable */
 class StringableMixin
 {
+    const string BIND = \Illuminate\Support\Stringable::class;
+
     public function removeEmptyLines(): \Closure
     {
         return function (): Stringable {
@@ -18,8 +20,7 @@ class StringableMixin
 
     public function lines(): \Closure
     {
-        return function (int $limit = -1, int $flags = 0, bool $removeEmpty = false): Collection
-        {
+        return function (int $limit = -1, int $flags = 0, bool $removeEmpty = false): Collection {
             $rtr = $removeEmpty ? $this->removeEmptyLines() : $this;
 
             return $rtr->split("/((\r?\n)|(\r\n?))/", $limit, $flags);
@@ -28,17 +29,15 @@ class StringableMixin
 
     public static function firstLine(): \Closure
     {
-        return function (): Stringable
-        {
-//            return $this->removeEmptyLines()->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)->first();
+        return function (): Stringable {
+            //            return $this->removeEmptyLines()->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)->first();
             return new static($this->removeEmptyLines()->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)->first());
         };
     }
 
     public static function makeEmpty(): \Closure
     {
-        return function (): Stringable
-        {
+        return function (): Stringable {
             return new static('');
         };
     }

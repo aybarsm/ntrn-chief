@@ -4,6 +4,7 @@ namespace App\Prompts\Themes\Ntrn;
 
 use App\Prompts\PasswordPrompt;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
+
 class PasswordPromptRenderer extends Renderer
 {
     use DrawsBoxes;

@@ -3,9 +3,7 @@
 namespace App\Prompts;
 
 use App\Services\Helper;
-use Closure;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 
 if (! function_exists('\App\Prompts\text')) {
     function text(...$params): string

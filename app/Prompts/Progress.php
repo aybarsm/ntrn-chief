@@ -3,10 +3,7 @@
 namespace App\Prompts;
 
 use App\Prompts\Contracts\ProgressContract;
-use App\Traits\ConfigableOpen;
 use Illuminate\Support\Str;
-use Illuminate\Support\Traits\Conditionable;
-use Illuminate\Support\Traits\Macroable;
 use Symfony\Component\Console\Cursor;
 
 class Progress extends Prompt implements ProgressContract

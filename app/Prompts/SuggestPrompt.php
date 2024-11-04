@@ -8,6 +8,7 @@ use Laravel\Prompts\Concerns\Scrolling;
 use Laravel\Prompts\Concerns\Truncation;
 use Laravel\Prompts\Concerns\TypedValue;
 use Laravel\Prompts\Key;
+
 class SuggestPrompt extends Prompt
 {
     use Scrolling, Truncation, TypedValue;

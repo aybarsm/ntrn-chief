@@ -178,6 +178,7 @@ class AppUpdate extends Command
         $this->ver = Helper::resolveVersion($this->ver, $this->verPattern, '');
         if (blank($this->ver)) {
             Log::error("App version could not be parsed: {$this->ver}");
+
             return;
         }
 
@@ -230,6 +231,7 @@ class AppUpdate extends Command
         $this->updateVer = Helper::resolveVersion($versionInfo, $this->updateVerPattern, '');
         if (blank($this->updateVer)) {
             Log::error("Update version could not be parsed: {$versionInfo}");
+
             return;
         }
 

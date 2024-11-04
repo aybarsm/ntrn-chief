@@ -1,7 +1,9 @@
 <?php
 
 namespace App\Prompts;
+
 use Laravel\Prompts\Key;
+
 class PausePrompt extends Prompt
 {
     /**

@@ -14,8 +14,8 @@ trait Maker
             ->chopEnd('prompt')
             ->value();
 
-        return match($name) {
-            'clear' => new \App\Prompts\Clear(),
+        return match ($name) {
+            'clear' => new \App\Prompts\Clear,
             'confirm' => new \App\Prompts\ConfirmPrompt(...$params),
             'formbuilder' => new \App\Prompts\FormBuilder(...$params),
             'formstep' => new \App\Prompts\FormStep(...$params),
@@ -35,11 +35,10 @@ trait Maker
             'select' => new \App\Prompts\SelectPrompt(...$params),
             'suggest' => new \App\Prompts\SuggestPrompt(...$params),
             'table' => new \App\Prompts\Table(...$params),
-            'terminal' => new \App\Prompts\Terminal(),
+            'terminal' => new \App\Prompts\Terminal,
             'textarea' => new \App\Prompts\TextareaPrompt(...$params),
             'text' => new \App\Prompts\TextPrompt(...$params),
             default => throw new \InvalidArgumentException("Prompt [{$name}] not found."),
         };
     }
-
 }

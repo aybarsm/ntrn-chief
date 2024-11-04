@@ -3,11 +3,12 @@
 namespace App\Prompts;
 
 use Closure;
-use Laravel\Prompts\Support\Utils;
 use Laravel\Prompts\Concerns\Scrolling;
 use Laravel\Prompts\Concerns\Truncation;
 use Laravel\Prompts\Concerns\TypedValue;
 use Laravel\Prompts\Key;
+use Laravel\Prompts\Support\Utils;
+
 class TextareaPrompt extends Prompt
 {
     use Scrolling;

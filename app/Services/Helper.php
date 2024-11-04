@@ -2,27 +2,24 @@
 
 namespace App\Services;
 
-use App\Attributes\Console\CommandTask;
-use App\Contracts\Console\TaskingCommandContract;
 use App\Prompts\Contracts\ProgressContract;
-use App\Traits\Services\Helper\System;
+use App\Traits\Services\Helper\App;
+use App\Traits\Services\Helper\Attributes;
+use App\Traits\Services\Helper\Git;
 use App\Traits\Services\Helper\Process;
+use App\Traits\Services\Helper\Reflector;
+use App\Traits\Services\Helper\System;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
-use JetBrains\PhpStorm\ExpectedValues;
-use Symfony\Component\Process\Process as SymfonyProcess;
-use Illuminate\Container\Attributes\Config;
-use App\Traits\Services\Helper\Reflector;
+
 use function Illuminate\Filesystem\join_paths;
-use App\Traits\Services\Helper\Git;
 
 class Helper
 {
-    use Reflector, Git, Process, System;
+    use App, Attributes, Git, Process, Reflector, System;
 
     public static array $langMap = [
         'langX.rx' => ['receive', 'receiving'],
@@ -30,115 +27,6 @@ class Helper
         'rx' => ['download', 'downloading'],
         'tx' => ['upload', 'uploading'],
     ];
-
-    protected static function appCommandsAdd(): array
-    {
-        $always = [
-            \Illuminate\Foundation\Console\KeyGenerateCommand::class,
-            \Illuminate\Console\Scheduling\ScheduleListCommand::class,
-            \Illuminate\Console\Scheduling\ScheduleRunCommand::class,
-            \Illuminate\Console\Scheduling\ScheduleFinishCommand::class,
-            \Symfony\Component\Console\Command\DumpCompletionCommand::class,
-        ];
-
-        if (static::isPhar()) {
-            $env = [
-                //
-            ];
-        } else {
-            $env = [
-                \LaravelZero\Framework\Commands\StubPublishCommand::class,
-                \Illuminate\Foundation\Console\VendorPublishCommand::class,
-            ];
-        }
-
-        return array_merge($always, $env);
-    }
-
-    protected static function appCommandsHidden(): array
-    {
-        $always = [
-            \NunoMaduro\LaravelConsoleSummary\SummaryCommand::class,
-            \Symfony\Component\Console\Command\HelpCommand::class,
-        ];
-
-        if (static::isPhar()) {
-            $env = [
-                //
-            ];
-        } else {
-            $env = [
-                //
-            ];
-        }
-
-        return array_merge($always, $env);
-    }
-
-    protected static function appCommandsRemove(): array
-    {
-        $always = [
-            \LaravelZero\Framework\Commands\MakeCommand::class,
-            \LaravelZero\Framework\Commands\BuildCommand::class,
-            \LaravelZero\Framework\Commands\RenameCommand::class,
-        ];
-
-        if (static::isPhar()) {
-            $env = [
-                \App\Commands\Customised\AppBuild::class,
-                \App\Commands\Customised\MakeCommand::class,
-                \Illuminate\Database\Console\Factories\FactoryMakeCommand::class,
-                \Illuminate\Database\Console\Migrations\MigrateMakeCommand::class,
-                \Illuminate\Foundation\Console\ModelMakeCommand::class,
-                \Illuminate\Database\Console\Seeds\SeederMakeCommand::class,
-                \Illuminate\Foundation\Console\TestMakeCommand::class,
-                \NunoMaduro\Collision\Adapters\Laravel\Commands\TestCommand::class,
-                \Illuminate\Foundation\Console\StubPublishCommand::class,
-                \Illuminate\Foundation\Console\VendorPublishCommand::class,
-            ];
-        } else {
-            $env = [
-                \App\Commands\AppUpdate::class,
-            ];
-        }
-
-        return array_merge($always, $env);
-    }
-
-    public static function appCommands(string $section = ''): array
-    {
-        $section = Str::lower($section);
-
-        return match ($section) {
-            'add' => static::appCommandsAdd(),
-            'hidden' => static::appCommandsHidden(),
-            'remove' => static::appCommandsRemove(),
-            '' => [
-                'add' => static::appCommandsAdd(),
-                'hidden' => static::appCommandsHidden(),
-                'remove' => static::appCommandsRemove(),
-            ],
-            default => [],
-        };
-    }
-
-    public static function appProviders(): array
-    {
-        $always = [
-            \Illuminate\Translation\TranslationServiceProvider::class,
-            \Illuminate\Pipeline\PipelineServiceProvider::class,
-            \Illuminate\Queue\QueueServiceProvider::class,
-            \GrahamCampbell\GitHub\GitHubServiceProvider::class,
-        ];
-
-        if (static::isPhar()) {
-            $env = [];
-        } else {
-            $env = [];
-        }
-
-        return array_merge($always, $env);
-    }
 
     public static function resolveVersion(string $verInfo, string $pattern, mixed $default = null, bool $segments = false): mixed
     {
@@ -160,7 +48,7 @@ class Helper
         $ver = static::resolveVersion($ver, $verPattern, '', true);
         $ver = array_merge(
             $ver,
-            match($step) {
+            match ($step) {
                 3 => ['major' => $ver['major'] + 1, 'minor' => 0, 'patch' => 0],
                 2 => ['minor' => $ver['minor'] + 1, 'patch' => 0],
                 default => ['patch' => $ver['patch'] + 1],
@@ -216,9 +104,7 @@ class Helper
         $fileFull = Str::of($ext)->trim()->trim('.')->when(
             fn (Stringable $ext) => $ext->isNotEmpty(),
             fn (Stringable $ext) => $ext->prepend('.'),
-        )
-            ->prepend($fileName)
-            ->value();
+        )->prepend($fileName)->value();
 
         $path = join_paths(static::tempBase(), $fileFull);
 
@@ -235,9 +121,9 @@ class Helper
 
     public static function composer(string $path = '', mixed $default = null): mixed
     {
-        try{
+        try {
             $json = File::json(base_path('composer.json'));
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $default;
         }
 
@@ -299,13 +185,14 @@ class Helper
         return static::fileStreamProgress($progress, $remote, $labelSuffix);
     }
 
-
-
-    protected static function getDist(): ?string
+    public static function phpinfo(int $flags = INFO_ALL): string
     {
-        [$os, $arch] = [static::osFamily(), static::arch()];
+        ob_start();
+        phpinfo($flags);
+        $info = ob_get_contents();
+        ob_clean();
 
-        return $os && $arch ? "{$os}-{$arch}" : null;
+        return $info;
     }
 
     public static function jsonDecode(mixed $json, mixed $default = null, bool $assoc = true, int $depth = 512, int $flags = 0): mixed
@@ -315,38 +202,5 @@ class Helper
         }
 
         return $default;
-    }
-
-    public static function getCommandTasks(TaskingCommandContract $command): array
-    {
-        $result = [];
-
-        $reflection = new \ReflectionObject($command);
-        $attributes = $reflection->getAttributes(CommandTask::class);
-
-        foreach ($attributes as $attribute) {
-            $instance = $attribute->newInstance();
-
-            throw_if(! method_exists($command, $instance->method),
-                new \Exception("Method [{$instance->method}] does not exist on [{$reflection->getName()}]")
-            );
-
-            if (blank($instance->title)) {
-                $instance->title = Str::headline($instance->method);
-            }
-
-            $result[] = $instance;
-        }
-
-        return $result;
-    }
-
-    public static function phpinfo(int $flags = INFO_ALL): string
-    {
-        ob_start();
-        phpinfo($flags);
-        $info = ob_get_contents();
-        ob_clean();
-        return $info;
     }
 }

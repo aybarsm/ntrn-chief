@@ -2,8 +2,8 @@
 
 namespace App\Prompts;
 
-use Laravel\Prompts\Key;
 use Closure;
+use Laravel\Prompts\Key;
 
 class ConfirmPrompt extends Prompt
 {

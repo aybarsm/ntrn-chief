@@ -4,6 +4,10 @@
         {
             "in": ["app", "bootstrap", "config", "resources", "database"],
             "notName": ["*.bak*"]
+        },
+        {
+            "name": "build.json",
+            "in": "."
         }
     ],
     "force-autodiscovery": true,

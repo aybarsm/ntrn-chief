@@ -15,7 +15,7 @@ use Symfony\Component\Console\Cursor;
 
 abstract class TaskingCommand extends Command implements SignalableCommandInterface, TaskingCommandContract
 {
-    use SignalHandler, Conditionable;
+    use Conditionable, SignalHandler;
 
     protected array $tasks;
 
@@ -45,7 +45,7 @@ abstract class TaskingCommand extends Command implements SignalableCommandInterf
 
     protected function executeTasks(): void
     {
-        $this->tasks = Helper::getCommandTasks($this);
+        $this->tasks = Helper::getCommandTaskAttributes($this);
         $this->cursor = new Cursor($this->output);
         \App\Prompts\Prompt::setOutput($this->output);
         \App\Prompts\Prompt::setCursor($this->cursor);

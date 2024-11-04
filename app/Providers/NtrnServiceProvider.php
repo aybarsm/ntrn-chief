@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\GitHubInterface;
+use App\Framework\Application;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
@@ -27,7 +29,7 @@ class NtrnServiceProvider extends ServiceProvider
     /** @noinspection PhpUnreachableStatementInspection */
     protected function addMixin(string $mixin): void
     {
-        throw_if(blank($mixin), new \Exception('Mixin class name cannot be empty.'));
+        throw_if(blank($mixin), 'Mixin class name cannot be empty.');
 
         $cnfKey = str($mixin)
             ->replace('\\', '_')
@@ -41,11 +43,9 @@ class NtrnServiceProvider extends ServiceProvider
 
         throw_if(! class_exists($mixin), "Mixin class [{$mixin}] not found.");
 
-        $docComment = (new \ReflectionClass($mixin))?->getDocComment();
-        throw_if($docComment === false, "Mixin class [{$mixin}] does not have a doc comment.");
-
-        $bind = Str::match(config('ntrn.mixins.pattern', '/@mixin\s*([^\s*]+)/'), $docComment);
-        throw_if(blank($bind), "Mixin class [{$mixin}] does not have a pattern eligible bind.");
+        throw_if(! defined("{$mixin}::BIND"), "Mixin class [{$mixin}] does not have a bind property.");
+        $bind = $mixin::BIND;
+        throw_if(blank($bind), "Mixin class [{$mixin}] bind property is empty.");
         throw_if(! class_exists($bind), "Mixin [{$mixin}] class bind of [{$bind}] not found.");
         throw_if(! method_exists($bind, 'mixin'), "Mixin [{$mixin}] class bind of [{$bind}] does not have a mixin method.");
 

@@ -10,14 +10,14 @@ class Running extends Prompt implements RunningContract
     use ConfigableOpen;
 
     protected bool $originalAsync;
+
     public int $steps = 20;
+
     public int $pos = 0;
+
     public bool $forward = true;
 
-    public function __construct(public string $label = '')
-    {
-
-    }
+    public function __construct(public string $label = '') {}
 
     public function move(): void
     {
@@ -60,7 +60,7 @@ class Running extends Prompt implements RunningContract
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function value(): mixed
     {

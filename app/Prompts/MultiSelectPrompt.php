@@ -4,8 +4,9 @@ namespace App\Prompts;
 
 use Closure;
 use Illuminate\Support\Collection;
-use Laravel\Prompts\Key;
 use Laravel\Prompts\Concerns\Scrolling;
+use Laravel\Prompts\Key;
+
 class MultiSelectPrompt extends Prompt
 {
     use Scrolling;

@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Laravel\Prompts\Concerns\Scrolling;
 use Laravel\Prompts\Key;
+
 class SelectPrompt extends Prompt
 {
     use Scrolling;

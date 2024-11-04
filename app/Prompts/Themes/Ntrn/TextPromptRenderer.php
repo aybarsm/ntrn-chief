@@ -4,6 +4,7 @@ namespace App\Prompts\Themes\Ntrn;
 
 use App\Prompts\TextPrompt;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
+
 class TextPromptRenderer extends Renderer
 {
     use DrawsBoxes;

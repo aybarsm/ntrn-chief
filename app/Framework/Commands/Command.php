@@ -4,10 +4,10 @@ namespace App\Framework\Commands;
 
 use App\Prompts\Prompt;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command as LaravelZeroCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+
 class Command extends LaravelZeroCommand
 {
     protected bool $loggerInit = false;

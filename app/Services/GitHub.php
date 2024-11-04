@@ -2,12 +2,29 @@
 
 namespace App\Services;
 
+use App\Contracts\GitHubInterface;
+use GrahamCampbell\GitHub\GitHubManager;
+use Illuminate\Container\Attributes\Config;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-class GitHub
+class GitHub implements GitHubInterface
 {
+    public function __construct(
+        #[Config('github.connections.dev.username', '')] protected string $devUsername,
+        #[Config('github.connections.dev.repo', '')] protected string $devRepoName,
+        #[Config('github.connections.update.username', '')] protected string $updateUsername,
+        #[Config('github.connections.update.repo', '')] protected string $updateRepoName,
+    )
+    {
+    }
+
+    public function devRepo(): array
+    {
+        return app('github')->connection('dev')->repo()->show($this->devUsername, $this->devRepoName);
+    }
+
     public static function resolveRepository(string $input): array
     {
         $input = trim($input);

@@ -5,6 +5,7 @@ namespace App\Prompts;
 use Closure;
 use Illuminate\Support\Collection;
 use Laravel\Prompts\Exceptions\FormRevertedException;
+
 class FormBuilder
 {
     /**

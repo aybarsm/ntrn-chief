@@ -15,13 +15,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Pipeline;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use Laravel\Prompts\ConfirmPrompt;
 use Psr\Http\Message\ResponseInterface;
 
-use Symfony\Component\Console\Cursor;
 use function Illuminate\Filesystem\join_paths;
 
 #[CommandTask('checkRepoStatus', null, 'Check repo status', true)]
@@ -61,10 +58,31 @@ class AppBuild extends TaskingCommand
     {
         $process = Process::path(base_path());
 
+        $prompts = [];
+
+        $pint = join_paths(base_path(), 'vendor', 'bin', 'pint');
+        if (File::exists($pint)) {
+            $this->output->writeln('<comment>Checking pint.</comment>');
+            $result = $process->run("{$pint} --test");
+            $pattern = '/\.\s*(?P<files>\d+)\s*files.*?(?P<issues>\d+)\s*style issues.*?\r?\n?/';
+            preg_match($pattern, $result->output(), $matches);
+            if (isset($matches['files']) && isset($matches['issues'])) {
+                $prompts['pint'] = $this->prompt('confirm',
+                    label: "Pint found {$matches['issues']} style issues in {$matches['files']} files. Would you like to run pint?",
+                );
+                $runPint = $prompts['pint']->prompt();
+                if ($runPint) {
+                    $result = $process->run("{$pint}");
+                    $this->setTaskMessage($result->successful() ? '<info>Pint ran successfully.</info>' : '<error>Pint failed to run.</error>');
+                }
+            }
+        }
+
         $result = $process->run('git rev-parse --is-inside-work-tree');
 
-        if (! $result->successful() || Str::firstLine($result->output()) != 'true'){
+        if (! $result->successful() || Str::firstLine($result->output()) != 'true') {
             $this->setTaskMessage('<error>Failed to check repository status.</error>');
+
             return false;
         }
 
@@ -74,8 +92,9 @@ class AppBuild extends TaskingCommand
 
         $result = $process->run('git symbolic-ref --short HEAD');
 
-        if (! $result->successful()){
+        if (! $result->successful()) {
             $this->setTaskMessage('<error>Failed to retrieve branch name.</error>');
+
             return false;
         }
 
@@ -85,8 +104,6 @@ class AppBuild extends TaskingCommand
         $result = $process->run('git status --porcelain');
 
         if (! blank(trim($result->output()))) {
-            $prompts = [];
-
             $hint = "Branch: {$branch}";
             $prompts['commit'] = $this->prompt('confirm',
                 label: 'Repository is not clean. Would you like to commit changes?',
@@ -97,7 +114,7 @@ class AppBuild extends TaskingCommand
             $table[] = ['Changes will be commited', $commit ? 'Yes' : 'No'];
             $commands[] = $commit ? 'git add . --all' : null;
 
-            if ($commit){
+            if ($commit) {
                 $prompts['message'] = $this->prompt('text',
                     label: 'Enter commit message:',
                     hint: $hint,
@@ -105,19 +122,19 @@ class AppBuild extends TaskingCommand
 
                 $message = $prompts['message']->prompt();
                 $table[] = ['Commit Message', $message];
-                $commands[] = 'git commit ' . (blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
+                $commands[] = 'git commit '.(blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
 
                 $currentTag = app('git.version');
                 $table[] = ['Current Tag', $currentTag];
 
                 $unreleased = Str::matchesReplace(
                     config('app.version_pattern'),
-                    ['major' => 0, 'minor' => 0,'patch' => 0]
+                    ['major' => 0, 'minor' => 0, 'patch' => 0]
                 );
 
                 $hint = "Branch: {$branch} / Current Tag: {$currentTag}";
                 $prompts['tag'] = $this->prompt('select',
-                    label: "App next version?",
+                    label: 'App next version?',
                     hint: $hint,
                     default: -1,
                     options: [
@@ -126,7 +143,7 @@ class AppBuild extends TaskingCommand
                         2 => 'Minor',
                         3 => 'Major',
                     ],
-                    transform: fn($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
+                    transform: fn ($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
                 );
 
                 $tag = $prompts['tag']->prompt();
@@ -136,57 +153,59 @@ class AppBuild extends TaskingCommand
 
                 $hint .= $tag === null ? '' : " / Next Tag: {$tag}";
                 $prompts['push'] = $this->prompt('confirm',
-                    label: "Push changes to remote?",
+                    label: 'Push changes to remote?',
                     hint: $hint,
                 );
 
                 $push = $prompts['push']->prompt();
                 $table[] = ['Push to remote', $push ? 'Yes' : 'No'];
 
-                if ($push){
+                if ($push) {
 
                     $result = $process->run('git remote show');
-                    if (! $result->successful()){
+                    if (! $result->successful()) {
                         $this->setTaskMessage('<error>Failed to retrieve remote repositories.</error>');
+
                         return false;
                     }
 
                     $availableRemotes = Str::of($result->output())->lines(-1, PREG_SPLIT_NO_EMPTY, true);
-                    if ($availableRemotes->isEmpty()){
+                    if ($availableRemotes->isEmpty()) {
                         $this->setTaskMessage('<error>No remote repositories available.</error>');
+
                         return false;
                     }
-                    $table[] = ['Available Remotes (' . $availableRemotes->count() . ')', Arr::join($availableRemotes->toArray(), ', ')];
+                    $table[] = ['Available Remotes ('.$availableRemotes->count().')', Arr::join($availableRemotes->toArray(), ', ')];
 
-                    if ($availableRemotes->count() > 1 ){
+                    if ($availableRemotes->count() > 1) {
                         $prompts['remotes'] = $this->prompt('multiselect',
-                            label: "Which remote or remotes would you like to push?",
+                            label: 'Which remote or remotes would you like to push?',
                             hint: $hint,
                             options: $availableRemotes,
                             required: true,
                         );
 
                         $remotes = $prompts['remotes']->prompt();
-                    }else {
+                    } else {
                         $remotes = $availableRemotes->toArray();
                     }
 
-                    $table[] = ['Push Remotes (' . count($remotes) . ')', Arr::join($remotes, ', ')];
-                    foreach($remotes as $remote){
-//                        The remote repo might not support atomic transactions
+                    $table[] = ['Push Remotes ('.count($remotes).')', Arr::join($remotes, ', ')];
+                    foreach ($remotes as $remote) {
+                        //                        The remote repo might not support atomic transactions
                         $commands[] = "git push {$remote} {$branch}";
-                        if ($tag !== null){
+                        if ($tag !== null) {
                             $commands[] = "git push {$remote} {$tag}";
                         }
-//                        if ($tag === null){
-//                            $commands[] = "git push {$remote} {$branch}";
-//                        }else {
-//                            $commands[] = "git push --atomic {$remote} {$branch} {$tag}";
-//                        }
+                        //                        if ($tag === null){
+                        //                            $commands[] = "git push {$remote} {$branch}";
+                        //                        }else {
+                        //                            $commands[] = "git push --atomic {$remote} {$branch} {$tag}";
+                        //                        }
                     }
                 }
 
-                foreach($prompts as $prompt){
+                foreach ($prompts as $prompt) {
                     $prompt->eraseRenderedLines();
                 }
 
@@ -205,26 +224,28 @@ class AppBuild extends TaskingCommand
                 $prompts['table']->clear();
 
                 if ($continue) {
-                    foreach($commands as $command){
+                    foreach ($commands as $command) {
                         $result = $process->run($command);
-                        if (! $result->successful()){
+                        if (! $result->successful()) {
                             $this->setTaskMessage("<error>Failed to execute command: {$command}</error>");
+
                             return false;
-                        }else {
+                        } else {
                             $this->setTaskMessage("<info>Command executed successfully: {$command}</info>");
                         }
                     }
                 }
 
-                if (! $continue){
+                if (! $continue) {
                     $this->output->writeln('<comment>Git actions cancelled.</comment>');
 
                     $continueBuild = $this->prompt('confirm',
                         label: 'Continue with build process?'
                     )->prompt();
 
-                    if (! $continueBuild){
+                    if (! $continueBuild) {
                         $this->setTaskMessage('<error>Build process cancelled.</error>');
+
                         return false;
                     }
                 }
@@ -261,7 +282,7 @@ class AppBuild extends TaskingCommand
 
             if ($result) {
                 unset($newHistory[$histKey]);
-                File::put($historyPath, json_encode(array_values($newHistory), JSON_PRETTY_PRINT));
+                File::put($historyPath, json_encode(array_values($newHistory)));
                 Log::info("Build [{$buildId}] : Backup restored.", $backup);
             } else {
                 Log::error("Build [{$buildId}] : Backup restore failed.", $backup);
@@ -322,11 +343,11 @@ class AppBuild extends TaskingCommand
             $config["backup.items.{$excludeKey}"] = ['src' => $exclude, 'dest' => join_paths($config['backup.path'], ...$excBase)];
         }
 
-//        if ($this->config('get', 'version') === 'unreleased') {
-//            $this->setTaskMessage('<error>App has not released yet.</error>');
-//
-//            return false;
-//        }
+        //        if ($this->config('get', 'version') === 'unreleased') {
+        //            $this->setTaskMessage('<error>App has not released yet.</error>');
+        //
+        //            return false;
+        //        }
 
         $config['initial'] = join_paths(base_path(), "{$this->getBinary()}.phar");
         $config['path'] = join_paths(config('dev.build.path'), $config['id']);
@@ -338,21 +359,24 @@ class AppBuild extends TaskingCommand
 
         if ($this->option('no-distributions')) {
             $this->setTaskMessage('<comment>Skipping distributions.</comment>');
-        }elseif(count($distributions) == 0) {
+        } elseif (count($distributions) == 0) {
             $this->setTaskMessage('<comment>No distributions to build.</comment>');
         }
 
         if ($this->option('no-distributions') || count($distributions) == 0) {
             $this->configables['build'] = Arr::undot($config);
+
             return true;
         }
 
         $config['spc.binary'] = config('dev.build.micro.spc');
         if (blank($config['spc.binary'])) {
             $this->setTaskMessage('<error>SPC binary path is not set.</error>');
+
             return false;
-        }elseif (! File::exists($config['spc.binary'])) {
+        } elseif (! File::exists($config['spc.binary'])) {
             $this->setTaskMessage("<error>SPC binary does not exist at {$config['spc.binary']}</error>");
+
             return false;
         }
 
@@ -368,7 +392,10 @@ class AppBuild extends TaskingCommand
             $micro['remote'] = Str::of($micro['remote'])->trim()->ltrim('/')->value();
 
             $config["{$cnfKey}.target"] = $distribution;
-            $config["{$cnfKey}.output"] = join_paths($config['path'], "{$config['name']}_{$distribution}");
+            $config["{$cnfKey}.output"] = join_paths($config['path'], $micro['binary']);
+            $config["{$cnfKey}.os"] = $micro['os'];
+            $config["{$cnfKey}.arch"] = $micro['arch'];
+            $config["{$cnfKey}.md5sum"] = (Arr::has($micro, 'md5sum') && $micro['md5sum'] === true);
             $config["{$cnfKey}.sfx.local"] = join_paths($microPath, $micro['local']);
             $config["{$cnfKey}.sfx.localExists"] = File::exists($config["{$cnfKey}.sfx.local"]);
             $config["{$cnfKey}.sfx.remote"] = $microUrl->finish($micro['remote'])->value();
@@ -426,6 +453,7 @@ class AppBuild extends TaskingCommand
 
         return true;
     }
+
     protected function pharAddFromString(string $path, string $file, string $content): true|string
     {
         try {
@@ -441,6 +469,17 @@ class AppBuild extends TaskingCommand
     {
         $initial = $this->config('get', 'initial');
         $phar = $this->config('get', 'phar');
+        $actualOutput = $this->option('leave-initial') ? $initial : $phar;
+
+        $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
+        if (File::put(base_path('build.json'), $buildContent, true) === false) {
+            $this->setTaskMessage('<error>Failed to write build.json file.</error>');
+
+            return false;
+        } else {
+            $this->setTaskMessage('<info>build.json file written successfully.</info>');
+        }
+
         $boxBinary = $this->config('get', 'box.binary');
         $boxDefaults = [
             'working-dir' => base_path(),
@@ -460,18 +499,12 @@ class AppBuild extends TaskingCommand
 
         if ($process->successful()) {
             if ($initFile) {
-                $actualOutput = $this->option('leave-initial') ? $initial : $phar;
                 if (! $this->option('leave-initial')) {
                     File::ensureDirectoryExists(dirname($phar));
                     File::move($initial, $phar);
                     File::put("$phar.md5sum", File::hash($phar));
                 }
                 $this->setTaskMessage("<info>Compile was successful and output is at {$actualOutput}</info>");
-                $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
-                $buildContentResult = $this->pharAddFromString($actualOutput, 'build.json', $buildContent);
-                if ($buildContentResult !== true) {
-                    $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildContentResult}</error>");
-                }
             } else {
                 $this->setTaskMessage("<comment>Compile was successful but initial output does not exist at {$initial}</comment>");
             }
@@ -602,49 +635,49 @@ class AppBuild extends TaskingCommand
 
         foreach ($distributions as $distribution) {
             $sfx = $distribution['sfx'];
+            $output = $distribution['output'];
+            $md5sum = $distribution['md5sum'];
+            $distPhar = "{$output}.phar";
 
             if (! $sfx['localExists']) {
                 $this->setTaskMessage("<error>{$distribution['target']} Sfx does not exist at {$sfx['local']}</error>");
+
                 continue;
             }
 
-            $distPhar = "{$distribution['output']}.phar";
-            if (! File::copy($phar, $distPhar)){
+            File::ensureDirectoryExists(dirname($output));
+
+            if (! File::copy($phar, $distPhar)) {
                 $this->setTaskMessage("<error>Phar {$phar} could not be copied to {$distPhar} for {$distribution['target']}</error>");
+
                 continue;
             }
 
             $buildContent = array_merge($this->config('get', 'json'), [
-                'dist' => $distribution['target'],
-                'build' => $this->config('get', 'id'),
+                'os' => $distribution['os'],
+                'arch' => $distribution['arch'],
+                'dist' => "{$distribution['os']}-{$distribution['arch']}",
             ]);
-            $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
-            $buildContentResult = $this->pharAddFromString($actualOutput, 'build.json', $buildContent);
+            $buildContent = json_encode($buildContent);
+            $buildContentResult = $this->pharAddFromString($distPhar, 'build.json', $buildContent);
             if ($buildContentResult !== true) {
                 $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildContentResult}</error>");
             }
 
-            try{
-                (new \Phar($distPhar))->addFromString('config/app_arch', $distribution['target']);
-            }catch(\Exception $e) {
-                $this->setTaskMessage("<error>Phar {$distPhar} could not be updated for {$distribution['target']} : {$e->getMessage()}</error>");
-                continue;
-            }
+            $spcArgs = array_merge($spcDefaults, ["with-micro={$sfx['local']}", "output={$output}"]);
+            $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], ($sfx['spcOptions'] ?? []), $spcArgs);
+            $process = Process::timeout($this->getTimeout())->run($spcCmd);
 
-            $output = $distribution['output'];
-            $spcOptions = Helper::buildProcessArgs($sfx['spcOptions'] ?? [], ($spcDefaults + ["with-micro={$sfx['local']}", "output={$output}"]));
-            File::ensureDirectoryExists(dirname($output));
-
-            $process = Process::timeout($this->getTimeout())
-                ->run([$spcBinary, 'micro:combine'] + $spcOptions);
             if ($process->successful()) {
-                File::put("$output.md5sum", File::hash($output));
+                if ($md5sum && (File::put("$output.md5sum", File::hash($output)) === false)) {
+                    $this->setTaskMessage("<error>Failed to write md5sum file for {$distribution['target']}</error>");
+                }
                 $this->setTaskMessage("<info>{$distribution['target']} built successfully at {$output}</info>");
                 if (! blank($chmod = config('dev.build.chmod')) && is_string($chmod) && is_numeric($chmod) && strlen($chmod) === 4) {
                     File::chmod($output, octdec(config('dev.build.chmod')));
                 }
             } else {
-                $this->setTaskMessage("<error>{$distribution['target']} build failed. Exit Code: {$process->exitCode()}</error>");
+                $this->setTaskMessage("<error>{$distribution['target']} build failed. Exit Code: {$process->exitCode()} - Output: {$process->errorOutput()}</error>");
                 if (File::exists($output)) {
                     File::delete($output);
                 }
@@ -672,6 +705,10 @@ class AppBuild extends TaskingCommand
     {
         if (! $this->initalised) {
             return $isSignal ? self::SUCCESS : $this;
+        }
+
+        if (File::exists(base_path('build.json'))) {
+            File::delete(base_path('build.json'));
         }
 
         foreach ($this->config('get', 'distributions', []) as $distribution) {

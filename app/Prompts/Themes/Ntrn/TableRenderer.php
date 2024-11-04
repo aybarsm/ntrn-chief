@@ -2,9 +2,9 @@
 
 namespace App\Prompts\Themes\Ntrn;
 
+use App\Prompts\Table;
 use Illuminate\Support\Str;
 use Laravel\Prompts\Output\BufferedConsoleOutput;
-use App\Prompts\Table;
 use Symfony\Component\Console\Helper\Table as SymfonyTable;
 use Symfony\Component\Console\Helper\TableStyle;
 
@@ -34,11 +34,9 @@ class TableRenderer extends Renderer
             ->setRows($table->rows)
             ->setStyle($tableStyle);
 
-        foreach(['HeaderTitle', 'FooterTitle'] as $setting)
-        {
+        foreach (['HeaderTitle', 'FooterTitle'] as $setting) {
             $cnf = Str::of($setting)->kebab()->replace('-', '.')->value();
-            if (! blank($table->config('get', $cnf)))
-            {
+            if (! blank($table->config('get', $cnf))) {
                 $method = "set{$setting}";
                 $symfonyTable->{$method}($table->config('get', $cnf));
             }

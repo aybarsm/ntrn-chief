@@ -3,7 +3,6 @@
 namespace App\Prompts;
 
 use App\Prompts\Contracts\SpinnerContract;
-use App\Traits\ConfigableOpen;
 
 class Spinner extends Prompt implements SpinnerContract
 {

@@ -4,6 +4,7 @@ namespace App\Prompts\Themes\Ntrn;
 
 use App\Prompts\PausePrompt;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsBoxes;
+
 class PausePromptRenderer extends Renderer
 {
     use DrawsBoxes;

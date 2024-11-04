@@ -8,13 +8,22 @@ use Illuminate\Support\Stringable;
 
 trait Process
 {
-    public static function buildProcessArgs(array $args = [], array $defaults = []): array
+    public static function buildProcessCmd(string|array $cmd, array $args = [], array $defaults = []): string
+    {
+        if (is_array($cmd)) {
+            $cmd = Arr::join($cmd, ' ');
+        }
+
+        return trim(trim($cmd).' '.static::buildProcessArgs($args, $defaults, true));
+    }
+
+    public static function buildProcessArgs(array $args = [], array $defaults = [], bool $asString = false): string|array
     {
         $built = [];
 
         foreach ([$defaults, $args] as $level) {
-            foreach($level as $argKey => $argVal) {
-                $arg = Str::of(match(true){
+            foreach ($level as $argKey => $argVal) {
+                $arg = Str::of(match (true) {
                     is_int($argKey) && blank($argVal) => (string) $argKey,
                     is_int($argKey) && ! blank($argVal) => (string) $argVal,
                     default => "{$argKey}={$argVal}",
@@ -39,7 +48,8 @@ trait Process
             }
         }
 
-        return array_values(Arr::map($built, fn ($value, $key) => blank($value) ? $key : "{$key}={$value}"));
-    }
+        $built = array_values(Arr::map($built, fn ($value, $key) => blank($value) ? $key : "{$key}={$value}"));
 
+        return $asString ? Arr::join($built, ' ') : $built;
+    }
 }

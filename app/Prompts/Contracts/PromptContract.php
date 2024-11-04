@@ -2,7 +2,4 @@
 
 namespace App\Prompts\Contracts;
 
-interface PromptContract
-{
-
-}
+interface PromptContract {}

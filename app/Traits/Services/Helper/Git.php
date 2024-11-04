@@ -11,7 +11,9 @@ use Illuminate\Support\Str;
 trait Git
 {
     public static string $gitBase;
+
     protected static PendingProcess $gitProcess;
+
     protected static function gitProcess(string $command, bool $fail = false): ProcessResult
     {
         if (! isset(static::$gitBase)) {
@@ -29,10 +31,9 @@ trait Git
 
     public static function gitRemote(string $remote = ''): Collection
     {
-        $cmd = 'remote show' . (blank($remote) ? '' : " {$remote}");
+        $cmd = 'remote show'.(blank($remote) ? '' : " {$remote}");
         $result = static::gitProcess($cmd, true);
 
         return Str::of($result->output())->lines(-1, PREG_SPLIT_NO_EMPTY, true);
     }
-
 }
