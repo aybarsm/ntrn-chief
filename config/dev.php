@@ -25,6 +25,7 @@ return Helper::isPhar() ? [] : [
             config_path('dev.php'),
         ],
         'micro' => [
+            'spc' => join_paths(base_path(), 'builds', 'utils', 'spc', 'darwin-aarch64'),
             'path' => join_paths(base_path(), 'builds', 'utils', 'micro'),
             'url' => 'https://dl.static-php.dev/static-php-cli',
             'archivePattern' => '/\.(zip|tar|tar\.gz)$/',

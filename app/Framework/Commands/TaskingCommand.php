@@ -9,12 +9,13 @@ use App\Prompts\Spinner;
 use App\Services\Helper;
 use App\Traits\Command\SignalHandler;
 use Illuminate\Support\Str;
+use Illuminate\Support\Traits\Conditionable;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Console\Cursor;
 
 abstract class TaskingCommand extends Command implements SignalableCommandInterface, TaskingCommandContract
 {
-    use SignalHandler;
+    use SignalHandler, Conditionable;
 
     protected array $tasks;
 

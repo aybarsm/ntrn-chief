@@ -30,7 +30,17 @@ class StringableMixin
     {
         return function (): Stringable
         {
+//            return $this->removeEmptyLines()->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)->first();
             return new static($this->removeEmptyLines()->split('#\r?\n#', 2, PREG_SPLIT_NO_EMPTY)->first());
+        };
+    }
+
+    public static function makeEmpty(): \Closure
+    {
+        return function (): Stringable
+        {
+            $this->value = '';
+            return $this;
         };
     }
 }

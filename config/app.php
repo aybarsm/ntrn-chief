@@ -6,13 +6,11 @@ use App\Services\Helper;
 
 return [
     'name' => 'NTRN',
+    'env' => (Helper::isPhar() ? 'production' : 'local'),
     'build' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_build'))) : 'development'),
     'version' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_version'))) : app('git.version')),
+    'arch' => (Helper::isPhar() ? trim(file_get_contents(config_path('app_arch'))) : Helper::arch()),
     'version_pattern' => env('APP_VERSION_PATTERN', '/v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/'),
-    'os' => Helper::os(),
-    'arch' => Helper::arch(),
-    'dist' => Helper::dist(),
-    'env' => (Helper::isPhar() ? 'production' : 'local'),
     'timezone' => 'UTC',
     'providers' => Helper::appProviders(),
     'update' => [

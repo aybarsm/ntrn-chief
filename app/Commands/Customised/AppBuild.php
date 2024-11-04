@@ -330,18 +330,35 @@ class AppBuild extends TaskingCommand
 
         $config['box.binary'] = join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box'));
 
+        $distributions = config('dev.build.micro.distributions', []);
+
         if ($this->option('no-distributions')) {
             $this->setTaskMessage('<comment>Skipping distributions.</comment>');
-            $this->configables['build'] = Arr::undot($config);
+        }elseif(count($distributions) == 0) {
+            $this->setTaskMessage('<comment>No distributions to build.</comment>');
+        }
 
+        if ($this->option('no-distributions') || count($distributions) == 0) {
+            $this->configables['build'] = Arr::undot($config);
             return true;
         }
+
+        $config['spc.binary'] = config('dev.build.micro.spc');
+        if (blank($config['spc.binary'])) {
+            $this->setTaskMessage('<error>SPC binary path is not set.</error>');
+            return false;
+        }elseif (! File::exists($config['spc.binary'])) {
+            $this->setTaskMessage("<error>SPC binary does not exist at {$config['spc.binary']}</error>");
+            return false;
+        }
+
+        File::chmod($config['spc.binary'], octdec('0755'));
 
         $microPath = config('dev.build.micro.path');
         $microUrl = Str::of(config('dev.build.micro.url'))->trim()->finish('/');
         $microArchivePattern = config('dev.build.micro.archivePattern', '');
 
-        foreach (config('dev.build.micro.distributions', []) as $distribution => $micro) {
+        foreach ($distributions as $distribution => $micro) {
             $cnfKey = 'distributions.'.Str::replace('.', '_', $distribution);
 
             $micro['remote'] = Str::of($micro['remote'])->trim()->ltrim('/')->value();
@@ -416,10 +433,10 @@ class AppBuild extends TaskingCommand
     {
         $initial = $this->config('get', 'initial');
         $phar = $this->config('get', 'phar');
+        $boxBinary = $this->config('get', 'box.binary');
 
         $process = Process::timeout($this->getTimeout())
-            ->command([$this->config('get', 'box.binary'), 'compile'] + $this->getBoxOptions())
-            ->run();
+            ->run([$boxBinary, 'compile'] + $this->getBoxOptions());
 
         $initFile = File::exists($initial);
 
@@ -567,7 +584,10 @@ class AppBuild extends TaskingCommand
             $output = $distribution['output'];
             File::ensureDirectoryExists(dirname($output));
 
-            $process = Process::timeout($this->getTimeout())->command("cat {$sfx['local']}  {$phar} > {$output}")->run();
+
+
+            $process = Process::timeout($this->getTimeout())
+                ->run("cat {$sfx['local']}  {$phar} > {$output}");
             if ($process->successful()) {
                 File::put("$output.md5sum", File::hash($output));
                 $this->setTaskMessage("<info>{$distribution['target']} built successfully at {$output}</info>");

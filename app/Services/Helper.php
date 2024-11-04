@@ -5,20 +5,23 @@ namespace App\Services;
 use App\Attributes\Console\CommandTask;
 use App\Contracts\Console\TaskingCommandContract;
 use App\Prompts\Contracts\ProgressContract;
+use App\Traits\Services\Helper\Process;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
+use JetBrains\PhpStorm\ExpectedValues;
 use Symfony\Component\Process\Process as SymfonyProcess;
 use Illuminate\Container\Attributes\Config;
 use App\Traits\Services\Helper\Reflector;
 use function Illuminate\Filesystem\join_paths;
 use App\Traits\Services\Helper\Git;
+
 class Helper
 {
-    use Reflector, Git;
+    use Reflector, Git, Process;
     protected static false|null|string $os = false;
 
     protected static false|null|string $arch = false;
@@ -392,5 +395,14 @@ class Helper
         }
 
         return $result;
+    }
+
+    public static function phpinfo(int $flags = INFO_ALL): string
+    {
+        ob_start();
+        phpinfo($flags);
+        $info = ob_get_contents();
+        ob_clean();
+        return $info;
     }
 }
