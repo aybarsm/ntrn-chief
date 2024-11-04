@@ -306,6 +306,11 @@ class AppBuild extends TaskingCommand
         $config['ts.safe'] = $config['ts.instance']->format('Ymd\THis\Z');
         $config['name'] = Str::lower(config('app.name'));
         $config['version'] = app('git.version');
+        $config['id'] = "{$config['version']}-{$config['ts.safe']}";
+        $config['json.version'] = $config['version'];
+        $config['json.build'] = $config['ts.safe'];
+        $config['json.id'] = $config['id'];
+
         $config['backup.path'] = joinPaths(config('dev.build.backup.path'), "{$config['version']}-{$config['ts.safe']}");
         $config['backup.history'] = joinPaths(config('dev.build.backup.path'), 'history.json');
 
@@ -324,7 +329,6 @@ class AppBuild extends TaskingCommand
 //        }
 
         $config['initial'] = join_paths(base_path(), "{$this->getBinary()}.phar");
-        $config['id'] = "{$config['version']}-{$config['ts.safe']}";
         $config['path'] = join_paths(config('dev.build.path'), $config['id']);
         $config['phar'] = join_paths($config['path'], "{$config['name']}.phar");
 
@@ -416,14 +420,18 @@ class AppBuild extends TaskingCommand
             $this->setTaskMessage('<comment>Old initial .phar file deleted.</comment>');
         }
 
-        File::put(config('dev.build.app_version', config_path('app_version')), $this->config('get', 'version'));
-        $this->setTaskMessage('<comment>app_version file created.</comment>');
-
-        File::put(config('dev.build.app_build', config_path('app_build')), $this->config('get', 'ts.safe'));
-        $this->setTaskMessage('<comment>app_build file created.</comment>');
-
         foreach (config('dev.build.exclude', []) as $excludeKey => $exclude) {
             $this->setTaskMessage("<comment>Excluding: {$exclude}</comment>");
+        }
+
+        return true;
+    }
+    protected function pharAddFromString(string $path, string $file, string $content): true|string
+    {
+        try {
+            (new \Phar($path))->addFromString($file, $content);
+        } catch (\Exception $exception) {
+            return $exception->getMessage();
         }
 
         return true;
@@ -434,9 +442,19 @@ class AppBuild extends TaskingCommand
         $initial = $this->config('get', 'initial');
         $phar = $this->config('get', 'phar');
         $boxBinary = $this->config('get', 'box.binary');
+        $boxDefaults = [
+            'working-dir' => base_path(),
+            'config' => base_path('box.json'),
+        ];
+
+        if ($this->output->isDebug()) {
+            $boxDefaults['debug'] = '';
+        }
+
+        $boxOptions = Helper::buildProcessArgs($this->option('box'), $boxDefaults);
 
         $process = Process::timeout($this->getTimeout())
-            ->run([$boxBinary, 'compile'] + $this->getBoxOptions());
+            ->run([$boxBinary, 'compile'] + $boxOptions);
 
         $initFile = File::exists($initial);
 
@@ -449,6 +467,11 @@ class AppBuild extends TaskingCommand
                     File::put("$phar.md5sum", File::hash($phar));
                 }
                 $this->setTaskMessage("<info>Compile was successful and output is at {$actualOutput}</info>");
+                $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
+                $buildContentResult = $this->pharAddFromString($actualOutput, 'build.json', $buildContent);
+                if ($buildContentResult !== true) {
+                    $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildContentResult}</error>");
+                }
             } else {
                 $this->setTaskMessage("<comment>Compile was successful but initial output does not exist at {$initial}</comment>");
             }
@@ -571,23 +594,49 @@ class AppBuild extends TaskingCommand
         $distributions = $this->config('get', 'distributions');
         $pharKey = $this->option('leave-initial') ? 'initial' : 'phar';
         $phar = $this->config('get', $pharKey);
+        $spcBinary = $this->config('get', 'spc.binary');
+        $spcDefaults = [
+            'debug',
+            'no-interaction',
+        ];
 
         foreach ($distributions as $distribution) {
             $sfx = $distribution['sfx'];
 
             if (! $sfx['localExists']) {
                 $this->setTaskMessage("<error>{$distribution['target']} Sfx does not exist at {$sfx['local']}</error>");
+                continue;
+            }
 
+            $distPhar = "{$distribution['output']}.phar";
+            if (! File::copy($phar, $distPhar)){
+                $this->setTaskMessage("<error>Phar {$phar} could not be copied to {$distPhar} for {$distribution['target']}</error>");
+                continue;
+            }
+
+            $buildContent = array_merge($this->config('get', 'json'), [
+                'dist' => $distribution['target'],
+                'build' => $this->config('get', 'id'),
+            ]);
+            $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
+            $buildContentResult = $this->pharAddFromString($actualOutput, 'build.json', $buildContent);
+            if ($buildContentResult !== true) {
+                $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildContentResult}</error>");
+            }
+
+            try{
+                (new \Phar($distPhar))->addFromString('config/app_arch', $distribution['target']);
+            }catch(\Exception $e) {
+                $this->setTaskMessage("<error>Phar {$distPhar} could not be updated for {$distribution['target']} : {$e->getMessage()}</error>");
                 continue;
             }
 
             $output = $distribution['output'];
+            $spcOptions = Helper::buildProcessArgs($sfx['spcOptions'] ?? [], ($spcDefaults + ["with-micro={$sfx['local']}", "output={$output}"]));
             File::ensureDirectoryExists(dirname($output));
 
-
-
             $process = Process::timeout($this->getTimeout())
-                ->run("cat {$sfx['local']}  {$phar} > {$output}");
+                ->run([$spcBinary, 'micro:combine'] + $spcOptions);
             if ($process->successful()) {
                 File::put("$output.md5sum", File::hash($output));
                 $this->setTaskMessage("<info>{$distribution['target']} built successfully at {$output}</info>");
@@ -610,54 +659,19 @@ class AppBuild extends TaskingCommand
         return str_replace(["'", '"'], '', Artisan::artisanBinary());
     }
 
-    private function getTimeout(): ?float
+    private function getTimeout(): ?int
     {
-        if (! is_numeric($this->option('timeout'))) {
-            throw new \InvalidArgumentException('The timeout value must be a number.');
-        }
+        throw_if(! is_numeric($this->option('timeout')), 'The timeout value must be a number.');
 
-        $timeout = (float) $this->option('timeout');
+        $timeout = (int) $this->option('timeout');
 
         return $timeout > 0 ? $timeout : null;
-    }
-
-    private function getBoxOptions(): array
-    {
-        $boxOptions = [];
-        foreach ($this->option('box') as $option) {
-            $option = Str::of($option)->trim();
-            $boxOptions[$option->ltrim('-')->before('=')->value()] = $option->after('=')->value();
-        }
-
-        $boxOptions = array_merge($boxOptions, [
-            'working-dir' => base_path(),
-            'config' => base_path('box.json'),
-        ]);
-
-        if ($this->output->isDebug()) {
-            $boxOptions['debug'] = '';
-        }
-
-        return array_values(Arr::map($boxOptions,
-            fn ($value, $key) => Str::of($key)->start('--')->unless(blank($value), fn ($str) => $str->append('='.$value))->value()
-        ));
     }
 
     private function cleanUp(bool $isSignal = false): AppBuild|int
     {
         if (! $this->initalised) {
             return $isSignal ? self::SUCCESS : $this;
-        }
-
-        $files = [
-            config('dev.build.app_version', config_path('app_version')),
-            config('dev.build.app_build', config_path('app_build')),
-        ];
-
-        foreach ($files as $file) {
-            if (File::exists($file)) {
-                File::delete($file);
-            }
         }
 
         foreach ($this->config('get', 'distributions', []) as $distribution) {

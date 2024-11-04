@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Attributes\Console\CommandTask;
 use App\Contracts\Console\TaskingCommandContract;
 use App\Prompts\Contracts\ProgressContract;
+use App\Traits\Services\Helper\System;
 use App\Traits\Services\Helper\Process;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -21,12 +22,7 @@ use App\Traits\Services\Helper\Git;
 
 class Helper
 {
-    use Reflector, Git, Process;
-    protected static false|null|string $os = false;
-
-    protected static false|null|string $arch = false;
-
-    protected static false|null|string $dist = false;
+    use Reflector, Git, Process, System;
 
     public static array $langMap = [
         'langX.rx' => ['receive', 'receiving'],
@@ -303,63 +299,11 @@ class Helper
         return static::fileStreamProgress($progress, $remote, $labelSuffix);
     }
 
-    public static function os(): string
-    {
-        if (static::$os === false) {
-            static::$os = Str::lower(PHP_OS_FAMILY);
-        }
 
-        return static::$os;
-    }
-
-    protected static function getArch(): ?string
-    {
-        $cmd = match (static::Os()) {
-            'linux', 'darwin' => 'uname -m',
-            'windows' => 'echo %PROCESSOR_ARCHITECTURE%',
-            default => null,
-        };
-
-        if (! $cmd) {
-            return null;
-        }
-
-        try {
-            $process = SymfonyProcess::fromShellCommandline($cmd)->enableOutput()->mustRun();
-        } catch (\Exception $e) {
-            return null;
-        }
-
-        $output = $process->isSuccessful() ? static::firstLine($process->getOutput(), true) : null;
-
-        return match ($output) {
-            'x86_64', 'amd64' => 'x86_64',
-            'aarch64', 'arm64' => 'aarch64',
-            default => null
-        };
-    }
-
-    public static function arch(): ?string
-    {
-        if (static::$arch === false) {
-            static::$arch = static::getArch();
-        }
-
-        return static::$arch;
-    }
-
-    public static function dist(mixed $default = null): mixed
-    {
-        if (static::$dist === false) {
-            static::$dist = static::getDist();
-        }
-
-        return static::$dist === null ? $default : static::$dist;
-    }
 
     protected static function getDist(): ?string
     {
-        [$os, $arch] = [static::os(), static::arch()];
+        [$os, $arch] = [static::osFamily(), static::arch()];
 
         return $os && $arch ? "{$os}-{$arch}" : null;
     }

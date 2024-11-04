@@ -39,8 +39,7 @@ class StringableMixin
     {
         return function (): Stringable
         {
-            $this->value = '';
-            return $this;
+            return new static('');
         };
     }
 }

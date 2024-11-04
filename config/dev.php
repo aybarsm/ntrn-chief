@@ -15,8 +15,6 @@ return Helper::isPhar() ? [] : [
     'build' => [
         'path' => join_paths(base_path(), 'builds'),
         'chmod' => '0755',
-        'app_version' => config_path('app_version'),
-        'app_build' => config_path('app_build'),
         'backup' => [
             'path' => join_paths(base_path(), 'builds', 'backups'),
         ],
