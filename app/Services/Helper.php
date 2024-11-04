@@ -15,10 +15,10 @@ use Symfony\Component\Process\Process as SymfonyProcess;
 use Illuminate\Container\Attributes\Config;
 use App\Traits\Services\Helper\Reflector;
 use function Illuminate\Filesystem\join_paths;
-
+use App\Traits\Services\Helper\Git;
 class Helper
 {
-    use Reflector;
+    use Reflector, Git;
     protected static false|null|string $os = false;
 
     protected static false|null|string $arch = false;
@@ -129,6 +129,7 @@ class Helper
             \Illuminate\Translation\TranslationServiceProvider::class,
             \Illuminate\Pipeline\PipelineServiceProvider::class,
             \Illuminate\Queue\QueueServiceProvider::class,
+            \GrahamCampbell\GitHub\GitHubServiceProvider::class,
         ];
 
         if (static::isPhar()) {

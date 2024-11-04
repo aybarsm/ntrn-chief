@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Services\Helper;
 
 return [
@@ -19,8 +21,8 @@ return [
             'token' => env('APP_UPDATE_AUTH_TOKEN'),
             'token_type' => env('APP_UPDATE_AUTH_TOKEN_TYPE', 'Bearer'),
         ],
-        'strategy' => env('APP_UPDATE_STRATEGY', 'DIRECT'),
-        'url' => env('APP_UPDATE_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist()),
+        'strategy' => env('APP_UPDATE_STRATEGY', 'GITHUB_RELEASE'),
+        'url' => env('APP_UPDATE_URL', 'https://github.com/aybarsm/ntrn-chief'),
         'version' => [
             'url' => env('APP_UPDATE_VERSION_URL', 'https://s3.blrm.net/vault/ntrn/latest/'.Helper::dist().'/version'),
             'headers' => Helper::jsonDecode(env('APP_UPDATE_VERSION_HEADERS'), []),

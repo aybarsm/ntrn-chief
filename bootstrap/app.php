@@ -1,5 +1,6 @@
 <?php
 
+// TODO: Load env file to an array for dynamic config path etc...
 use App\Framework\Application;
 
 $app = Application::configure(basePath: dirname(__DIR__))->create();

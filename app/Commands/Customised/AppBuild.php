@@ -286,7 +286,7 @@ class AppBuild extends TaskingCommand
         }
 
         File::ensureDirectoryExists(dirname($dest));
-        $result = $isDir = File::isDirectory($src) ? File::moveDirectory($src, $dest) : File::move($src, $dest);
+        $result = File::isDirectory($src) ? File::moveDirectory($src, $dest) : File::move($src, $dest);
 
         if ($result) {
             $history[] = ['build' => $buildId, 'ts' => $ts, 'src' => $src, 'dest' => $dest, 'isDir' => File::isDirectory($src)];
@@ -305,7 +305,7 @@ class AppBuild extends TaskingCommand
         $config['ts.instance'] = Carbon::now('UTC');
         $config['ts.safe'] = $config['ts.instance']->format('Ymd\THis\Z');
         $config['name'] = Str::lower(config('app.name'));
-        $config['version'] = config('app.version');
+        $config['version'] = app('git.version');
         $config['backup.path'] = joinPaths(config('dev.build.backup.path'), "{$config['version']}-{$config['ts.safe']}");
         $config['backup.history'] = joinPaths(config('dev.build.backup.path'), 'history.json');
 

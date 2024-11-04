@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": "^8.3.0",
+        "graham-campbell/github": "^12.6",
         "illuminate/database": "^11.5",
         "illuminate/encryption": "^11.29",
         "illuminate/http": "^11.5",
@@ -63,7 +64,8 @@
         "sort-packages": true,
         "optimize-autoloader": true,
         "allow-plugins": {
-            "pestphp/pest-plugin": true
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
         }
     },
     "minimum-stability": "stable",
