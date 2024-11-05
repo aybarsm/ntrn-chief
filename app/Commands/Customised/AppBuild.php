@@ -192,16 +192,10 @@ class AppBuild extends TaskingCommand
 
                     $table[] = ['Push Remotes ('.count($remotes).')', Arr::join($remotes, ', ')];
                     foreach ($remotes as $remote) {
-                        //                        The remote repo might not support atomic transactions
                         $commands[] = "git push {$remote} {$branch}";
                         if ($tag !== null) {
                             $commands[] = "git push {$remote} {$tag}";
                         }
-                        //                        if ($tag === null){
-                        //                            $commands[] = "git push {$remote} {$branch}";
-                        //                        }else {
-                        //                            $commands[] = "git push --atomic {$remote} {$branch} {$tag}";
-                        //                        }
                     }
                 }
 

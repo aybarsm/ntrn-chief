@@ -19,6 +19,10 @@ return [
             'token' => env('GITHUB_UPDATE_TOKEN'),
             'cache' => false,
         ],
+        'none' => [
+            'method' => 'none',
+            'cache' => false,
+        ],
     ],
     'cache' => [
         'main' => [

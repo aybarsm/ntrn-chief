@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Contracts\GitHubInterface;
-use App\Framework\Application;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;

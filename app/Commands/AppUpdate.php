@@ -6,6 +6,7 @@ use App\Framework\Commands\Command;
 use App\Services\GitHub;
 use App\Services\Helper;
 use App\Traits\Configable;
+use GrahamCampbell\GitHub\GitHubManager;
 use GuzzleHttp\TransferStats;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Container\Attributes\Config;
@@ -36,6 +37,7 @@ class AppUpdate extends Command
     protected ?string $updateFile = null;
 
     protected ?string $updateVer = null;
+    protected bool $toLatest;
 
     protected PendingRequest $request;
 
@@ -46,128 +48,120 @@ class AppUpdate extends Command
     protected bool $initalised = false;
 
     public function __construct(
+        protected GitHubManager $github,
         #[Config('app.version')] protected string $ver,
+        #[Config('app.update.version')] protected string $updateTo,
         #[Config('app.version_pattern')] protected string $verPattern,
         #[Config('app.update.strategy')] protected string $strategy,
         #[Config('app.update.url')] protected string $url,
         #[Config('app.update.auto')] protected bool $auto,
-        #[Config('app.update.version.url')] protected string $updateVerUrl,
-        #[Config('app.update.version.headers')] protected array $updateVerHeaders,
-        #[Config('app.update.version.pattern')] protected string $updateVerPattern,
+        #[Config('app.update.timeout')] protected int $timeout,
+        #[Config('app.update.version_query.url')] protected string $updateVerUrl,
+        #[Config('app.update.version_query.headers')] protected array $updateVerHeaders,
+        #[Config('app.update.version_query.pattern')] protected string $updateVerPattern,
+        #[Config('github.connections.update.username')] protected string $ghUsername,
+        #[Config('github.connections.update.repo')] protected string $ghRepoName,
     ) {
         $this->strategy = Str::upper($this->strategy);
         $this->file = \Phar::running(false);
-
+        $this->toLatest = $this->updateTo == 'latest';
         parent::__construct();
     }
 
-    protected function logException(\Exception $e): void
-    {
-        $log['app'] = [
-            'version' => $this->ver,
-            'updateVersion' => $this->updateVer,
-            'autoUpdate' => $this->auto,
-            'strategy' => $this->strategy,
-            'url' => $this->url,
-        ];
-
-        $log['exception'] = [
-            'class' => get_class($e),
-            'message' => $e->getMessage(),
-            'code' => $e->getCode(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ];
-
-        $log['stats'] = [];
-        if ($this->stats) {
-            $log['stats'] = [
-                'effectiveUri' => $this->stats->getEffectiveUri()->__toString(),
-                'handler' => $this->stats->getHandlerStats(),
-                'errorHandlerData' => $this->stats->getHandlerErrorData(),
-                'transferTime' => $this->stats->getTransferTime(),
-            ];
-        }
-
-        $log['response'] = [];
-        if ($this->response) {
-            $log['response'] = [
-                'status' => $this->response->status(),
-                'headers' => $this->response->headers(),
-                'clientError' => $this->response->clientError(),
-            ];
-        }
-
-        Log::error('Update failed', $log);
-    }
-
-    protected function httpGet(string $url, string $sink = ''): bool
-    {
-        $this->request = Http::timeout(config('app.update.timeout', 60))
-            ->throw(fn (Response $response) => $response->status() !== 200)
-            ->withOptions([
-                // Avoid decoupling the instances
-                'on_stats' => function (TransferStats $transferStats) use (&$stats) {
-                    $stats = $transferStats;
-                },
-            ])
-            ->when(! blank($sink), fn (PendingRequest $request) => $request->sink($sink));
-
-        try {
-            $this->response = $this->request->get($url);
-        } catch (\Exception $e) {
-            $this->stats = $stats;
-            $this->logException($e);
-
-            return false;
-        }
-
-        $this->stats = $stats;
-        Log::notice("Http get to {$url} successful.".(! blank($sink) ? " File saved to {$sink}" : ''));
-
-        return true;
-    }
-
-    protected function processCommand(string $command, string $path = '', int $timeout = 0): ProcessResult|bool
-    {
-        try {
-            return Process::command($command)
-                ->when(! blank($path), fn ($process) => $process->path($path))
-                ->when($timeout > 0, fn ($process) => $process->timeout($timeout))
-                ->run()
-                ->throw();
-        } catch (\Exception $e) {
-            $this->logException($e);
-
-            return false;
-        }
-    }
-
-    protected function getUpdateFile(...$params): string
-    {
-        $updateFile = join_paths(...$params);
-
-        if (File::exists($updateFile)) {
-            File::delete($updateFile);
-            Log::notice("Existing update file removed: {$updateFile}");
-        }
-
-        $this->initalised = true;
-
-        return $updateFile;
-    }
-
-    protected function getVer(string $verInfo, string $pattern): string
-    {
-        preg_match($pattern, $verInfo, $verSegments);
-        if (! Arr::has($verSegments, ['major', 'minor', 'patch'])) {
-            Log::error("Version could not be parsed: {$verInfo}");
-
-            return '';
-        }
-
-        return "{$verSegments['major']}.{$verSegments['minor']}.{$verSegments['patch']}";
-    }
+//    protected function logException(\Exception $e): void
+//    {
+//        $log['app'] = [
+//            'version' => $this->ver,
+//            'updateTo' => $this->updateTo,
+//            'updateVersion' => $this->updateVer,
+//            'autoUpdate' => $this->auto,
+//            'strategy' => $this->strategy,
+//            'url' => $this->url,
+//            'timeout' => $this->timeout,
+//        ];
+//
+//        $log['exception'] = [
+//            'class' => get_class($e),
+//            'message' => $e->getMessage(),
+//            'code' => $e->getCode(),
+//            'file' => $e->getFile(),
+//            'line' => $e->getLine(),
+//        ];
+//
+//        $log['stats'] = [];
+//        if ($this->stats) {
+//            $log['stats'] = [
+//                'effectiveUri' => $this->stats->getEffectiveUri()->__toString(),
+//                'handler' => $this->stats->getHandlerStats(),
+//                'errorHandlerData' => $this->stats->getHandlerErrorData(),
+//                'transferTime' => $this->stats->getTransferTime(),
+//            ];
+//        }
+//
+//        $log['response'] = [];
+//        if ($this->response) {
+//            $log['response'] = [
+//                'status' => $this->response->status(),
+//                'headers' => $this->response->headers(),
+//                'clientError' => $this->response->clientError(),
+//            ];
+//        }
+//
+//        Log::error('Update failed', $log);
+//    }
+//
+//    protected function httpGet(string $url, string $sink = ''): bool
+//    {
+//        $this->request = Http::timeout($this->timeout)
+//            ->throw(fn (Response $response) => $response->status() !== 200)
+//            ->withOptions([
+//                // Avoid decoupling the instances
+//                'on_stats' => function (TransferStats $transferStats) use (&$stats) {
+//                    $stats = $transferStats;
+//                },
+//            ])
+//            ->when(! blank($sink), fn (PendingRequest $request) => $request->sink($sink));
+//
+//        try {
+//            $this->response = $this->request->get($url);
+//        } catch (\Exception $e) {
+//            $this->stats = $stats;
+//            $this->logException($e);
+//
+//            return false;
+//        }
+//
+//        $this->stats = $stats;
+//        Log::notice("Http get to {$url} successful.".(! blank($sink) ? " File saved to {$sink}" : ''));
+//
+//        return true;
+//    }
+//
+//    protected function getUpdateFile(...$params): string
+//    {
+//        $updateFile = join_paths(...$params);
+//
+//        if (File::exists($updateFile)) {
+//            File::delete($updateFile);
+//            Log::notice("Existing update file removed: {$updateFile}");
+//        }
+//
+//        $this->initalised = true;
+//
+//        return $updateFile;
+//    }
+//
+//    protected function getVer(string $verInfo, string $pattern): string
+//    {
+//        preg_match($pattern, $verInfo, $verSegments);
+//        if (! Arr::has($verSegments, ['major', 'minor', 'patch'])) {
+//            Log::error("Version could not be parsed: {$verInfo}");
+//
+//            return '';
+//        }
+//
+//        return "{$verSegments['major']}.{$verSegments['minor']}.{$verSegments['patch']}";
+//    }
 
     public function handle(): void
     {
@@ -175,95 +169,87 @@ class AppUpdate extends Command
             $this->ver = $this->option('assume-ver');
         }
 
-        $this->ver = Helper::resolveVersion($this->ver, $this->verPattern, '');
-        if (blank($this->ver)) {
-            Log::error("App version could not be parsed: {$this->ver}");
-
-            return;
-        }
-
-        if (blank($this->ver)) {
-            return;
-        }
-
-        $invalid = false;
-        if ($invalid = ! in_array($this->strategy, ['DIRECT', 'GITHUB_RELEASE'])) {
-            Log::warning("Invalid update strategy: {$this->strategy}");
-        }
-
-        if ($invalid = ! Str::isUrl($this->url)) {
-            Log::warning("Invalid update URL: {$this->url}");
-        }
-
-        if ($invalid) {
-            return;
-        }
-
-        if ($this->strategy == 'DIRECT') {
-            if ($this->httpGet($this->updateVerUrl)) {
-                return;
-            }
-
-            $versionInfo = $this->response->body();
-        } elseif ($this->strategy == 'GITHUB_RELEASE') {
-            try {
-                $latest = GitHub::releaseLatest($this->url);
-            } catch (\Exception $e) {
-                $this->logException($e);
-
-                return;
-            }
-
-            if ($latest === null) {
-                Log::warning("No release found in GitHub repository: {$this->url}");
-
-                return;
-            }
-
-            $versionInfo = $latest['tag_name'];
-            // Implement the rest of the logic
-        } else {
-            Log::warning("Update strategy not implemented: {$this->strategy}");
-
-            return;
-        }
-
-        $this->updateVer = Helper::resolveVersion($versionInfo, $this->updateVerPattern, '');
-        if (blank($this->updateVer)) {
-            Log::error("Update version could not be parsed: {$versionInfo}");
-
-            return;
-        }
-
-        if (version_compare($this->updateVer, $this->ver, '<=')) {
-            Log::notice("No update available. Current version: {$this->ver}, Next version: {$this->updateVer}");
-
-            return;
-        }
-
-        $this->updateFile = $this->getUpdateFile(dirname($this->file), 'ntrn_update');
-
-        if (! $this->httpGet($this->url, $this->updateFile)) {
-            return;
-        }
-
-        File::chmod($this->updateFile, fileperms($this->file));
-        Log::notice('Update file permissions set.');
-
-        try {
-            if ($this->option('no-cleanup')) {
-                File::copy($this->updateFile, $this->file);
-            } else {
-                File::move($this->updateFile, $this->file);
-            }
-
-        } catch (\Exception $e) {
-            $this->logException($e);
-
-            return;
-        }
-
-        Log::notice("App update from {$this->ver} to {$this->updateVer} successful.");
+//        if (! $this->toLatest && version_compare($this->ver, $this->updateTo, '=')) {
+//            Log::info("No need to update. Current version: {$this->ver}, Next version: {$this->updateTo}");
+//            return;
+//        }
+//
+//        $this->ver = Helper::resolveVersion($this->ver, $this->verPattern, '');
+//        if (blank($this->ver)) {
+//            Log::error("App version could not be parsed: {$this->ver}");
+//            return;
+//        }
+//
+//        if (! in_array($this->strategy, ['DIRECT', 'GITHUB'])) {
+//            Log::warning("Invalid update strategy: {$this->strategy}");
+//            return;
+//        }
+//
+//        if ($this->strategy == 'DIRECT') {
+//            if (! Str::isUrl($this->url)) {
+//                Log::warning("Invalid update URL: {$this->url}");
+//                return;
+//            }
+//
+//            if (! $this->httpGet($this->updateVerUrl)) {
+//                return;
+//            }
+//
+//            $versionInfo = $this->response->body();
+//        } elseif ($this->strategy == 'GITHUB') {
+//            try{
+//                if ($this->toLatest){
+//                    $githubRelease = $this->github->connection('update')->repo()->releases()->latest($this->ghUsername, $this->ghRepoName);
+//                }else {
+//
+//                }
+//
+//                $versionInfo = $this->github->connection('update')->repo()->releases()->latest($this->ghUsername, $this->ghRepoName)
+//            } catch (\Exception $e) {
+//                $this->logException($e);
+//
+//                return;
+//            }
+//        }
+//
+//        $this->updateVer = Helper::resolveVersion($versionInfo, $this->updateVerPattern, '');
+//        if (blank($this->updateVer)) {
+//            Log::error("Update version could not be parsed: {$versionInfo}");
+//
+//            return;
+//        }
+//
+//        if ($this->toLatest && version_compare($this->updateVer, $this->ver, '<=')) {
+//            Log::notice("No latest update available. Current version: {$this->ver}, Next version: {$this->updateVer}");
+//            return;
+//        }elseif (version_compare($this->updateVer, $this->ver, '=')) {
+//            Log::notice("No update available. Current version: {$this->ver}, Next version: {$this->updateVer}");
+//            return;
+//        }
+//
+//        $this->updateFile = $this->getUpdateFile(dirname($this->file), 'ntrn_update');
+//
+//        if (! $this->httpGet($this->url, $this->updateFile)) {
+//            return;
+//        }
+//
+//        File::chmod($this->updateFile, fileperms($this->file));
+//        Log::notice('Update file permissions set.');
+//
+//        try {
+//            if ($this->option('no-cleanup')) {
+//                File::copy($this->updateFile, $this->file);
+//            } else {
+//                File::move($this->updateFile, $this->file);
+//            }
+//
+//        } catch (\Exception $e) {
+//            $this->logException($e);
+//
+//            return;
+//        }
+//
+//        Log::notice("App update from {$this->ver} to {$this->updateVer} successful.");
     }
 
     public function schedule(Schedule $schedule): void
