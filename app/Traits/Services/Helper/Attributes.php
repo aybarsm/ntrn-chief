@@ -36,39 +36,31 @@ trait Attributes
     {
         throw_if(! class_exists($attribute), "Attribute class [{$attribute}] does not exist.");
         throw_if(! defined("{$attribute}::BIND"), "Attribute class [{$attribute}] does not have a BIND constant.");
-        throw_if(! defined("{$attribute}::EXPECT"), "Attribute class [{$attribute}] does not have an EXPECT constant.");
-
-//        $expectMet = false;
-//        foreach($attribute::EXPECT as $expect){
-//            if ($object instanceof $expect){
-//                $expectMet = true;
-//                break;
-//            }
-//        }
-//        $class = get_class($object);
-//        throw_if(count($attribute::EXPECT) > 0 && ! $expectMet, "Object [{$class}] does not implement any of the expected interfaces.");
 
         $bind = Str::lower($attribute::BIND);
 
         $result = [];
 
         $reflection = new \ReflectionObject($object);
-        $attributes = $reflection->getAttributes($attributeClass);
+        $attributes = $reflection->getAttributes($attribute);
 
-        foreach ($attributes as $attribute) {
-            $instance = $attribute->newInstance();
+        foreach ($attributes as $attrPos => $attr) {
+            if ($bind == 'method') {
+                throw_if(! property_exists($attribute, 'method'), "Attribute [{$attribute}] does not have a method property.");
+            }
+
+            if (method_exists($attribute, 'beforeResolve')) {
+                $instance::beforeResolve($attrPos, $attr, $object);
+            }
+
+            $instance = $attr->newInstance();
 
             if ($bind == 'method') {
-                throw_if(! property_exists($instance, 'method'), "Attribute [{$attribute}] does not have a method property.");
                 throw_if(! method_exists($object, $instance->method), "Method [{$instance->method}] does not exist on [{$reflection->getName()}]");
             }
 
-            if (method_exists($instance, 'beforeResolve')) {
-                $instance->beforeResolve($object);
-            }
-
             if (method_exists($instance, 'afterResolve')) {
-                $instance->afterResolve($object);
+                $instance->afterResolve($attrPos, $attr, $object);
             }
 
             $result[] = $instance;

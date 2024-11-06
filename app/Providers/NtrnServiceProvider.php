@@ -16,6 +16,7 @@ class NtrnServiceProvider extends ServiceProvider
     {
         App::booted(function () {
             static::initPromptTheme();
+
         });
     }
 

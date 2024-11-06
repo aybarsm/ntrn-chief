@@ -6,7 +6,6 @@ use App\Framework\Commands\Command;
 use App\Services\GitHub;
 use App\Services\Helper;
 use App\Traits\Configable;
-use GrahamCampbell\GitHub\GitHubManager;
 use GuzzleHttp\TransferStats;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Container\Attributes\Config;
@@ -48,23 +47,22 @@ class AppUpdate extends Command
     protected bool $initalised = false;
 
     public function __construct(
-        protected GitHubManager $github,
-        #[Config('app.version')] protected string $ver,
-        #[Config('app.update.version')] protected string $updateTo,
-        #[Config('app.version_pattern')] protected string $verPattern,
-        #[Config('app.update.strategy')] protected string $strategy,
-        #[Config('app.update.url')] protected string $url,
-        #[Config('app.update.auto')] protected bool $auto,
-        #[Config('app.update.timeout')] protected int $timeout,
-        #[Config('app.update.version_query.url')] protected string $updateVerUrl,
-        #[Config('app.update.version_query.headers')] protected array $updateVerHeaders,
-        #[Config('app.update.version_query.pattern')] protected string $updateVerPattern,
-        #[Config('github.connections.update.username')] protected string $ghUsername,
-        #[Config('github.connections.update.repo')] protected string $ghRepoName,
+//        #[Config('app.version')] protected string $ver,
+//        #[Config('app.update.version')] protected string $updateTo,
+//        #[Config('app.version_pattern')] protected string $verPattern,
+//        #[Config('app.update.strategy')] protected string $strategy,
+//        #[Config('app.update.url')] protected string $url,
+//        #[Config('app.update.auto')] protected bool $auto,
+//        #[Config('app.update.timeout')] protected int $timeout,
+//        #[Config('app.update.version_query.url')] protected string $updateVerUrl,
+//        #[Config('app.update.version_query.headers')] protected array $updateVerHeaders,
+//        #[Config('app.update.version_query.pattern')] protected string $updateVerPattern,
+//        #[Config('github.connections.update.username')] protected string $ghUsername,
+//        #[Config('github.connections.update.repo')] protected string $ghRepoName,
     ) {
-        $this->strategy = Str::upper($this->strategy);
-        $this->file = \Phar::running(false);
-        $this->toLatest = $this->updateTo == 'latest';
+//        $this->strategy = Str::upper($this->strategy);
+//        $this->file = \Phar::running(false);
+//        $this->toLatest = $this->updateTo == 'latest';
         parent::__construct();
     }
 
@@ -165,9 +163,9 @@ class AppUpdate extends Command
 
     public function handle(): void
     {
-        if ($this->option('assume-ver') !== null) {
-            $this->ver = $this->option('assume-ver');
-        }
+//        if ($this->option('assume-ver') !== null) {
+//            $this->ver = $this->option('assume-ver');
+//        }
 
 //        if (! $this->toLatest && version_compare($this->ver, $this->updateTo, '=')) {
 //            Log::info("No need to update. Current version: {$this->ver}, Next version: {$this->updateTo}");

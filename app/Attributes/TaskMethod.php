@@ -8,9 +8,6 @@ use Attribute;
 class TaskMethod
 {
     public const string BIND = 'method';
-    public const array EXPECT = [
-        TaskingCommandContract::class,
-    ];
 
     public int $position;
 
@@ -20,4 +17,9 @@ class TaskMethod
         public bool $bail = false,
         public array $whenFailedSkip = [],
     ) {}
+
+    public function afterResolve(int $position, $attribute, $object): void
+    {
+        $this->position = $position;
+    }
 }

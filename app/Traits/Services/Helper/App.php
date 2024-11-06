@@ -106,7 +106,6 @@ trait App
             \Illuminate\Translation\TranslationServiceProvider::class,
             \Illuminate\Pipeline\PipelineServiceProvider::class,
             \Illuminate\Queue\QueueServiceProvider::class,
-            \GrahamCampbell\GitHub\GitHubServiceProvider::class,
         ];
 
         if (static::isPhar()) {

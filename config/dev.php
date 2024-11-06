@@ -8,6 +8,15 @@ use function Illuminate\Filesystem\join_paths;
 
 return Helper::isPhar() ? [] : [
     'temp' => join_paths(sys_get_temp_dir(), 'ntrn-chief_dev'),
+    'github' => [
+        'owner' => env('DEV_GITHUB_OWNER', 'aybarsm'),
+        'repo' => env('DEV_GITHUB_REPO', 'ntrn-chief'),
+        'token' => env('DEV_GITHUB_TOKEN'),
+        'http' => [
+            'headers' => Helper::jsonDecode(env('DEV_GITHUB_HTTP_HEADERS'), []),
+            'timeout' => (int) env('DEV_GITHUB_HTTP_TIMEOUT', 60),
+        ],
+    ],
     'build' => [
         'path' => join_paths(base_path(), 'builds'),
         'chmod' => '0755',
