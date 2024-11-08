@@ -106,6 +106,7 @@ trait App
             \Illuminate\Translation\TranslationServiceProvider::class,
             \Illuminate\Pipeline\PipelineServiceProvider::class,
             \Illuminate\Queue\QueueServiceProvider::class,
+            \Illuminate\Validation\ValidationServiceProvider::class,
         ];
 
         if (static::isPhar()) {

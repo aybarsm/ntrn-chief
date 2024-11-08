@@ -21,17 +21,17 @@ abstract class Prompt extends LaravelPrompt implements Contracts\PromptContract
 
     protected static function cursor(): Cursor
     {
-        return self::$cursor ??= new Cursor(parent::output());
+        return static::$cursor ??= new Cursor(parent::output());
     }
 
     public static function setCursor(Cursor $cursor): void
     {
-        self::$cursor = $cursor;
+        static::$cursor = $cursor;
     }
 
     protected function setCursorPos(): void
     {
-        $this->cursorPos = static::$cursor->getCurrentPosition();
+        $this->cursorPos = static::cursor()->getCurrentPosition();
     }
 
     protected function render(): void

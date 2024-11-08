@@ -6,6 +6,7 @@ use App\Attributes\TaskMethod;
 use App\Contracts\TaskingMethodContract;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Context;
 
 abstract class TaskingMethod implements TaskingMethodContract
 {
@@ -24,7 +25,7 @@ abstract class TaskingMethod implements TaskingMethodContract
         $skipList = collect();
 
         foreach ($this->tasks as $taskPos => $task) {
-            $this->taskPreventThrow = false;
+            $this->taskPreventThrow = Context::has('appNoThrow');
             $this->taskStopExecution = false;
             $skip = $skipList->search(fn ($item) => $item['method'] == $task->method);
             if ($skip !== false) {
