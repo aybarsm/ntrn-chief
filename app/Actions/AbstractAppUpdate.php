@@ -10,23 +10,35 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+
 use function Illuminate\Filesystem\join_paths;
 
 abstract class AbstractAppUpdate extends TaskingMethod
 {
     protected array $params;
+
     protected string $appVer;
+
     protected string $appVerPattern;
 
     protected string $updateVer;
+
     protected string $updateTo;
+
     protected string $updateVerPattern;
+
     protected bool $latest;
+
     protected string $stdAppVer;
+
     protected string $stdUpdateVer;
-    protected bool $updateRequired = false;
+
+    protected bool $updateRequired;
+
     protected string $downloadPath;
+
     protected PendingRequest $client;
+
     abstract protected function downloadUpdateAsset(): void;
 
     protected function standardiseVersions(): void
@@ -39,23 +51,27 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
         $this->stdAppVer = "{$appVer['major']}.{$appVer['minor']}.{$appVer['patch']}";
         $this->stdUpdateVer = "{$updateVer['major']}.{$updateVer['minor']}.{$updateVer['patch']}";
+
+        Log::info("Standardised Versions: App: [{$this->stdAppVer}] - Update: [{$this->stdUpdateVer}]");
     }
 
     protected function checkUpdateRequirement(): void
     {
-        $this->taskStopExecution = match($this->latest) {
-            true => version_compare($this->stdAppVer, $this->stdUpdateVer, '>='),
-            default => version_compare($this->stdAppVer, $this->stdUpdateVer, '=='),
+        $this->updateRequired = match ($this->latest) {
+            true => version_compare($this->stdAppVer, $this->stdUpdateVer, '<'),
+            default => version_compare($this->stdAppVer, $this->stdUpdateVer, '!='),
         };
+
+        $this->taskStopExecution = ! $this->updateRequired;
     }
 
     protected function setParameters(): void
     {
-        if (Context::has('debugAppUpdateAssumeVer')){
+        if (Context::has('debugAppUpdateAssumeVer')) {
             $this->params['appVer'] = Context::get('debugAppUpdateAssumeVer');
         }
 
-        foreach($this->params as $key => $value) {
+        foreach ($this->params as $key => $value) {
             $this->{$key} = $value;
         }
 
@@ -68,6 +84,7 @@ abstract class AbstractAppUpdate extends TaskingMethod
         $tsSafe = Helper::tsSafe();
         $namePrefix = "{$this->stdUpdateVer}-{$tsSafe}";
         $nameSuffix = Helper::isPhar() ? basename(\Phar::running(false)) : Str::slug(config('app.name'), '_');
+
         return join_paths($downloadDir, "{$namePrefix}_{$nameSuffix}");
     }
 
@@ -76,13 +93,13 @@ abstract class AbstractAppUpdate extends TaskingMethod
         TaskMethod $task,
         \Exception $exception): void
     {
-//        $exception = [
-//            'class' => get_class($e),
-//            'message' => $e->getMessage(),
-//            'code' => $e->getCode(),
-//            'file' => $e->getFile(),
-//            'line' => $e->getLine(),
-//        ];
+        //        $exception = [
+        //            'class' => get_class($e),
+        //            'message' => $e->getMessage(),
+        //            'code' => $e->getCode(),
+        //            'file' => $e->getFile(),
+        //            'line' => $e->getLine(),
+        //        ];
 
         $context = [
             'task' => [
@@ -91,7 +108,7 @@ abstract class AbstractAppUpdate extends TaskingMethod
             ],
             'exception' => $exception,
             'app' => [
-                'config' => config('app')
+                'config' => config('app'),
             ],
         ];
 
@@ -99,11 +116,17 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
         $this->taskStopExecution = true;
     }
-    public function __destruct()
+
+    protected function handleAfter(): void
     {
+        Log::info('Handle after called');
+
+        if (isset($this->updateRequired)) {
+            Context::add('appUpdateRequired', $this->updateRequired);
+        }
+
         if (isset($this->downloadPath)) {
             Context::add('appUpdateFile', $this->downloadPath);
         }
     }
-
 }

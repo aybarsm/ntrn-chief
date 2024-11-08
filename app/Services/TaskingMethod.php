@@ -11,14 +11,21 @@ use Illuminate\Support\Facades\Context;
 abstract class TaskingMethod implements TaskingMethodContract
 {
     protected array $tasks;
+
     protected bool $taskPreventThrow = false;
+
     protected bool $taskStopExecution = false;
+
     protected bool $tasksExecuted = false;
 
     protected function executeTasks(): void
     {
         if ($this->tasksExecuted) {
             return;
+        }
+
+        if (method_exists($this, 'handleBefore')) {
+            $this->handleBefore();
         }
 
         $this->tasks = Helper::getAttributeList($this, TaskMethod::class);
@@ -33,21 +40,22 @@ abstract class TaskingMethod implements TaskingMethodContract
                     $this->handleSkip($skipList->get($skip), $taskPos, $task);
                 }
                 $skipList->forget($skip);
+
                 continue;
             }
 
-            try{
+            try {
                 $this->{$task->method}();
-            }catch (\Exception $exception){
+            } catch (\Exception $exception) {
                 if (method_exists($this, 'handleException')) {
                     $this->handleException($taskPos, $task, $exception);
-                }elseif (! $this->taskPreventThrow) {
+                } elseif (! $this->taskPreventThrow) {
                     throw $exception;
                 }
 
                 if ($task->bail) {
                     break;
-                }elseif (count($task->whenFailedSkip) > 0) {
+                } elseif (count($task->whenFailedSkip) > 0) {
                     Arr::map($task->whenFailedSkip, function ($method) use ($taskPos, $task, $skipList) {
                         $skipList->when(
                             fn (Collection $list) => $list->firstWhere('method', $method) === null,
@@ -62,7 +70,10 @@ abstract class TaskingMethod implements TaskingMethodContract
             }
         }
 
+        if (method_exists($this, 'handleAfter')) {
+            $this->handleAfter();
+        }
+
         $this->tasksExecuted = true;
     }
-
 }

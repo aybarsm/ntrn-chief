@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\Finder\Finder;
 
 use function Illuminate\Filesystem\join_paths;
 
@@ -712,6 +713,20 @@ class AppBuild extends TaskingCommand
         }
 
         $this->restoreBackups();
+        //        TODO: Remove old backup directories
+        //        $historyPath = $this->config('get', 'backup.history');
+        //        if (File::exists($historyPath)) {
+        //            $history = File::json($historyPath);
+        //            if (blank($history)) {
+        //                $backupPath = config('dev.build.backup.path');
+        //                $dirs = Finder::create()->in($backupPath)->directories()->sortByName();
+        //                foreach ($dirs as $dir) {
+        //                    if (File::isEmptyDirectory($dir->getPathname())) {
+        //                        File::deleteDirectory($dir->getPathname());
+        //                    }
+        //                }
+        //            }
+        //        }
 
         return $isSignal ? self::SUCCESS : $this;
     }

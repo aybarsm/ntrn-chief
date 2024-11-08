@@ -15,6 +15,6 @@ class DummyClass extends TaskingCommand
 
     public function handle()
     {
-        //
+        $this->executeTasks();
     }
 }

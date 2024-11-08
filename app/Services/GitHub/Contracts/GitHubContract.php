@@ -2,7 +2,4 @@
 
 namespace App\Services\GitHub\Contracts;
 
-interface GitHubContract
-{
-
-}
+interface GitHubContract {}

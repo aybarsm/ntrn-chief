@@ -2,6 +2,4 @@
 
 namespace App\Contracts\Actions;
 
-interface AppUpdateDirectContract
-{
-}
+interface AppUpdateDirectContract {}

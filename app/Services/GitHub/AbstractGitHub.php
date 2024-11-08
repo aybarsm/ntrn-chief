@@ -2,7 +2,4 @@
 
 namespace App\Services\GitHub;
 
-class AbstractGitHub
-{
-
-}
+class AbstractGitHub {}

@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Services\GitHub\Contracts\GitHubContract;
 use App\Services\GitHub\GitHubManager;
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\ServiceProvider;
 
 class GitHubServiceProvider extends ServiceProvider
@@ -14,8 +13,5 @@ class GitHubServiceProvider extends ServiceProvider
         $this->app->singleton(GitHubContract::class, GitHubManager::class);
     }
 
-    public function boot(): void
-    {
-
-    }
+    public function boot(): void {}
 }

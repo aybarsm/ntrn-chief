@@ -63,7 +63,7 @@ trait App
         if (static::isPhar()) {
             $env = [
                 \App\Commands\Customised\AppBuild::class,
-                \App\Commands\AppPublish::class,
+                \App\Commands\AppRelease::class,
                 \App\Commands\Customised\MakeCommand::class,
                 \Illuminate\Database\Console\Factories\FactoryMakeCommand::class,
                 \Illuminate\Database\Console\Migrations\MigrateMakeCommand::class,
@@ -76,7 +76,7 @@ trait App
             ];
         } else {
             $env = [
-//                \App\Commands\AppUpdate::class,
+                //                \App\Commands\AppUpdate::class,
             ];
         }
 

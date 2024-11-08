@@ -18,8 +18,8 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-//        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
-//        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
+        //        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
+        //        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
         App::booted(function () {
             static::initPromptTheme();
         });

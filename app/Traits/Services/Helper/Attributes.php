@@ -32,7 +32,7 @@ trait Attributes
         return $result;
     }
 
-        public static function getAttributeList(object $object, string $attribute): array
+    public static function getAttributeList(object $object, string $attribute): array
     {
         throw_if(! class_exists($attribute), "Attribute class [{$attribute}] does not exist.");
         throw_if(! defined("{$attribute}::BIND"), "Attribute class [{$attribute}] does not have a BIND constant.");

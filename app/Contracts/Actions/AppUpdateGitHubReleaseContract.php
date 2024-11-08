@@ -2,7 +2,4 @@
 
 namespace App\Contracts\Actions;
 
-interface AppUpdateGitHubReleaseContract
-{
-
-}
+interface AppUpdateGitHubReleaseContract {}

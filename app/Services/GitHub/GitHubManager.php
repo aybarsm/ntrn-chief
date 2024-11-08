@@ -9,8 +9,9 @@ use Illuminate\Http\Client\PendingRequest;
 
 class GitHubManager extends AbstractGitHub implements GitHubContract
 {
-    static ?PendingRequest $devClient;
-    static PendingRequest $updateClient;
+    public static ?PendingRequest $devClient;
+
+    public static PendingRequest $updateClient;
 
     public function __construct(
         #[Config('app.update.strategies.github.release.owner')] string $updateOwner,
@@ -23,9 +24,8 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
         #[Config('dev.github.token')] ?string $devToken,
         #[Config('dev.github.http.timeout')] ?int $devHttpTimeout,
         #[Config('dev.github.http.headers')] ?array $devHttpHeaders,
-    )
-    {
-        $client = new PendingRequest();
+    ) {
+        $client = new PendingRequest;
         $client->accept('application/vnd.github.v3+json');
 
         if (! Helper::isPhar() && ! blank($devOwner) && ! blank($devRepo) && ! blank($devToken)) {
@@ -36,7 +36,7 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
             if (! blank($devHttpHeaders)) {
                 static::$devClient->withHeaders($devHttpHeaders);
             }
-        }else {
+        } else {
             static::$devClient = null;
         }
 

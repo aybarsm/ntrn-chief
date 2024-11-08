@@ -16,7 +16,7 @@ class DummyClass extends TaskingCommand
 
     public function handle()
     {
-        //
+        $this->executeTasks();
     }
 
     public function schedule(Schedule $schedule): void
