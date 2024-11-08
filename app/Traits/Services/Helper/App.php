@@ -76,7 +76,7 @@ trait App
             ];
         } else {
             $env = [
-                \App\Commands\AppUpdate::class,
+//                \App\Commands\AppUpdate::class,
             ];
         }
 

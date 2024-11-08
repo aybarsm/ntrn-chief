@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Actions\AppUpdate;
+namespace App\Actions;
 
+use App\Attributes\TaskMethod;
 use App\Services\Helper;
 use App\Services\TaskingMethod;
 use Illuminate\Http\Client\PendingRequest;
@@ -50,6 +51,10 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
     protected function setParameters(): void
     {
+        if (Context::has('debugAppUpdateAssumeVer')){
+            $this->params['appVer'] = Context::get('debugAppUpdateAssumeVer');
+        }
+
         foreach($this->params as $key => $value) {
             $this->{$key} = $value;
         }
@@ -68,23 +73,29 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
     protected function handleException(
         int $taskPos,
-        \ReflectionAttribute $task,
-        \Exception $e): void
+        TaskMethod $task,
+        \Exception $exception): void
     {
-        $log['app'] = [
-            'class' => get_class($this),
-            'config' => config('app'),
+//        $exception = [
+//            'class' => get_class($e),
+//            'message' => $e->getMessage(),
+//            'code' => $e->getCode(),
+//            'file' => $e->getFile(),
+//            'line' => $e->getLine(),
+//        ];
+
+        $context = [
+            'task' => [
+                'pos' => $taskPos,
+                'method' => $task,
+            ],
+            'exception' => $exception,
+            'app' => [
+                'config' => config('app')
+            ],
         ];
 
-        $log['exception'] = [
-            'class' => get_class($e),
-            'message' => $e->getMessage(),
-            'code' => $e->getCode(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ];
-
-        Log::error('Update failed', $log);
+        Log::error('Update failed', $context);
 
         $this->taskStopExecution = true;
     }

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Actions\AppUpdateDirect;
+use App\Actions\AppUpdateGitHubRelease;
+use App\Contracts\Actions\AppUpdateDirectContract;
+use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
@@ -14,9 +18,10 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+//        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
+//        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
         App::booted(function () {
             static::initPromptTheme();
-
         });
     }
 

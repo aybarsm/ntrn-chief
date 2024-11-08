@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Actions\AppUpdate;
+namespace App\Actions;
 
 use App\Attributes\TaskMethod;
 use Illuminate\Container\Attributes\Config;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 
-#[TaskMethod(method: 'setHttpClients', title: 'Set Parameters ', bail: true)]
+#[TaskMethod(method: 'setParameters', title: 'Set Parameters ', bail: true)]
 #[TaskMethod(method: 'queryRemoteVersion', title: 'Query Remote Version ', bail: true)]
 #[TaskMethod(method: 'standardiseVersions', title: 'Standardise Versions', bail: true)]
 #[TaskMethod(method: 'checkUpdateRequirement', title: 'Check Update Requirement')]
@@ -32,7 +32,6 @@ class AppUpdateDirect extends AbstractAppUpdate
         #[Config('app.update.strategies.direct.version.url')] string $updateVerUrl,
         #[Config('app.update.strategies.direct.version.http.timeout')] int $updateVerHttpTimeout,
         #[Config('app.update.strategies.direct.version.http.headers')] array $updateVerHttpHeaders,
-
     ): void
     {
         $this->params = get_defined_vars();

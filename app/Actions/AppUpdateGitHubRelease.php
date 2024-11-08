@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Actions\AppUpdate;
+namespace App\Actions;
 
+use App\Attributes\TaskMethod;
 use App\Services\GitHub\Contracts\GitHubContract;
 use Illuminate\Container\Attributes\Config;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
-use App\Attributes\TaskMethod;
 
 #[TaskMethod(method: 'setRelease', title: 'Set Relevant GitHub Release', bail: true)]
 #[TaskMethod(method: 'standardiseVersions', title: 'Standardise Versions', bail: true)]

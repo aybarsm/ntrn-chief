@@ -2,10 +2,12 @@
 
 namespace App\Commands;
 
+use App\Actions\AppUpdateDirect;
+use App\Actions\AppUpdateGitHubRelease;
 use App\Framework\Commands\Command;
-use App\Traits\Configable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Container\Attributes\Config;
+use Illuminate\Support\Str;
 
 class AppUpdate extends Command
 {
@@ -22,7 +24,15 @@ class AppUpdate extends Command
         #[Config('app.update.auto')] bool $auto,
     ): void
     {
+        $strategy = Str::upper($strategy);
 
+        if ($strategy == 'GITHUB_RELEASE'){
+            $this->app->call(AppUpdateGitHubRelease::class);
+        }elseif ($strategy == 'DIRECT') {
+            $this->app->call(AppUpdateDirect::class);
+        }else {
+            $this->error("Invalid update strategy [{$strategy}]");
+        }
     }
 
     public function schedule(Schedule $schedule): void
