@@ -2,18 +2,20 @@
 
 namespace App\Prompts;
 
-use App\Traits\ConfigableOpen;
-use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Laravel\Prompts\Concerns\Scrolling;
 use Laravel\Prompts\Concerns\Truncation;
 use Laravel\Prompts\Concerns\TypedValue;
 use Laravel\Prompts\Support\Utils;
+use function Symfony\Component\Translation\t;
 
 class FlowingOutput extends Prompt
 {
     use Scrolling, Truncation, TypedValue;
     public int $width = 120;
     public string $outputBody = '';
+    public Collection $outputLines;
 
     protected bool $originalAsync;
 
@@ -21,7 +23,10 @@ class FlowingOutput extends Prompt
         public string $label = '',
         int $rows = 5,
         public string $hint = '',
+        public bool $naturalFlow = true,
     ) {
+        $this->outputLines = collect();
+
         $this->scroll = $rows;
 
         $this->initializeScrolling();
@@ -141,12 +146,11 @@ class FlowingOutput extends Prompt
 
     public function addOutput(string $output): void
     {
-        if (blank($output)){
+        $output = Str::lines(trim($output), -1, PREG_SPLIT_NO_EMPTY, true);
+        if ($output->isEmpty()) {
             return;
         }
-        $this->outputBody .= (! blank($this->outputBody) ? PHP_EOL : '') . trim($output);
-        $this->handleDownKey();
-        $this->render();
+        $this->outputLines->push($output);
     }
 
     protected function handleDownKey(): void

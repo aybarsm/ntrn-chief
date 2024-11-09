@@ -41,11 +41,11 @@ class FlowingOutputRenderer extends Renderer
         $longest = $this->longest($prompt->lines()) + 2;
 
         return implode(PHP_EOL, $this->scrollbar(
-            $visible,
-            $prompt->firstVisible,
-            $prompt->scroll,
-            count($prompt->lines()),
-            min($longest, $prompt->width + 2),
+            visible: $visible,
+            firstVisible: $prompt->firstVisible,
+            height: $prompt->scroll,
+            total: count($prompt->lines()),
+            width: $prompt->width + 2,
         ));
     }
 
