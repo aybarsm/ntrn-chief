@@ -3,11 +3,14 @@
 namespace App\Prompts;
 
 use App\Prompts\Contracts\ProgressContract;
+use App\Traits\ConfigableOpen;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Cursor;
 
 class Progress extends Prompt implements ProgressContract
 {
+    use ConfigableOpen;
+
     public int $progress = 0;
 
     public int $total = 0;

@@ -45,6 +45,7 @@ class Command extends LaravelZeroCommand
             'terminal' => new \App\Prompts\Terminal,
             'textarea' => new \App\Prompts\TextareaPrompt(...$params),
             'text' => new \App\Prompts\TextPrompt(...$params),
+            'flowingoutput' => new \App\Prompts\FlowingOutput(...$params),
             default => throw new \InvalidArgumentException("Prompt [{$name}] not found."),
         };
     }

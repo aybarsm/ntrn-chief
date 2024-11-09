@@ -22,7 +22,7 @@ use Illuminate\Validation\Rules\RequiredIf;
 use Psr\Http\Message\ResponseInterface;
 use function Illuminate\Filesystem\join_paths;
 
-#[CommandTask('setParameters', null, 'Set Parameters')]
+#[CommandTask('setParameters', null, 'Set Parameters', true)]
 #[CommandTask('selectOptions', null, 'Select Options to Distribute')]
 #[CommandTask('downloadSfx', null, 'Download Micro Sfx Files')]
 #[CommandTask('extractSfx', null, 'Extract Micro Sfx Files')]
@@ -35,7 +35,7 @@ class AppDistribute extends TaskingCommand
     protected array $prompts = [];
     protected function setParameters(): bool
     {
-        $phar = Str::of(config('app.name'))->lower()->finish('.phar')->value();
+        $pharName = Str::of(config('app.name'))->lower()->finish('.phar')->value();
         $buildPath = config('dev.build.path', base_path('builds'));
         $data = [];
         $data['builds'] = collect(File::directories($buildPath))
@@ -46,12 +46,19 @@ class AppDistribute extends TaskingCommand
                 return Str::isMatch('/^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/', $item);
             })
             ->sortDesc()
+            ->map(function ($item) use ($buildPath, $pharName) {
+                return join_paths($buildPath, $item, $pharName);
+            })
+            ->filter(function ($item) {
+                return File::exists($item);
+            })
             ->values()
             ->toArray();
 
         $data['spc'] = config('dev.build.spc', []);
         $data['static'] = config('dev.build.static', []);
         $messages = [
+            'builds.min' => 'No matching builds found in the builds directory.',
             'spc.remote.required' => 'SPC remote configuration array is required when local file does not exist.',
             'static.*.remote.required' => 'Static remote configuration array is required when local file does not exist.',
         ];
@@ -113,22 +120,15 @@ class AppDistribute extends TaskingCommand
 
     protected function selectOptions(): bool
     {
-        $phar = $this->config('get', 'phar');
         $builds = $this->config('get', 'builds', []);
-        $this->prompts['build'] = $this->prompt('select',
+        $this->prompts['phar'] = $this->prompt('select',
             label: 'Select Build to Distribute',
             options: $builds,
             default: 0,
-            transform: function ($value) use ($phar) {
-                return join_paths(config('dev.build.path'), $value, $phar);
-            },
-            validate: function ($value) {
-                return File::exists($value) ? null : "Phar file does not exist at {$value}";
-            },
         );
 
-        $this->configables['build'] = $this->prompts['build']->prompt();
-        $this->prompts['build']->hint = "Phar file: {$this->configables['build']}";
+        $this->configables['phar'] = $this->prompts['phar']->prompt();
+//        $this->prompts['build']->hint = "Phar file: {$this->configables['build']}";
 
 //        $this->configables['build'] = [
 //            'name' => $build,

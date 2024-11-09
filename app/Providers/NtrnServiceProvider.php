@@ -79,6 +79,7 @@ class NtrnServiceProvider extends ServiceProvider
 
         $additional = [
             \App\Prompts\Running::class => \App\Prompts\Themes\Ntrn\RunningRenderer::class,
+            \App\Prompts\FlowingOutput::class => \App\Prompts\Themes\Ntrn\FlowingOutputRenderer::class,
         ];
 
         \App\Prompts\Prompt::addTheme('ntrn', array_merge($ntrn, $additional));

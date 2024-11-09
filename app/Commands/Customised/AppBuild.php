@@ -25,18 +25,15 @@ use function Illuminate\Filesystem\join_paths;
 #[CommandTask('checkRepoStatus', null, 'Check repo status', true)]
 #[CommandTask('setParameters', null, 'Set build parameters', true)]
 #[CommandTask('prepare', null, 'Prepare compile environment', true)]
+#[CommandTask('backupExcludes', null, 'Backup Excluded Files & Directories', true)]
 #[CommandTask('compile', IndicatorType::SPINNER, 'Compile .phar file', true)]
-#[CommandTask('checkDistributions', null, 'Check distributions', false, true)]
-#[CommandTask('downloadSfx', IndicatorType::PROGRESS, 'Download Micro Sfx')]
-#[CommandTask('extractSfx', null, 'Extract Micro Sfx')]
-#[CommandTask('buildBinaries', null, 'Build distribution binaries')]
+#[CommandTask('restoreBackups', null, 'Restore Excluded File & Directory Backups')]
+//#[CommandTask('backupExcludes', null, 'Backup Excluded Files & Directories', true)]
 class AppBuild extends TaskingCommand
 {
     use Configable;
-
-    protected string $configablePrefix = 'build';
-
     protected bool $initalised = false;
+    protected bool $backupsRestored = false;
 
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
@@ -53,6 +50,7 @@ class AppBuild extends TaskingCommand
         });
 
         $this->executeTasks();
+        dump($this->config('get', 'backup'));
     }
 
     protected function checkRepoStatus(): bool
@@ -251,163 +249,44 @@ class AppBuild extends TaskingCommand
         return true;
     }
 
-    protected function restoreBackups(): void
-    {
-        $buildId = $this->config('get', 'id', 'Unknown');
-        $historyPath = $this->config('get', 'backup.history');
-        if (! File::exists($historyPath)) {
-            return;
-        }
-
-        $history = collect(File::json($historyPath))->sortByDesc('ts')->toArray();
-        $newHistory = $history;
-
-        foreach ($history as $histKey => $backup) {
-            if (File::exists($backup['src'])) {
-                Log::info("Build [{$buildId}] : Backup restore skipped. Backup destination (Source) already exists.", $backup);
-
-                continue;
-            } elseif (! File::exists($backup['dest'])) {
-                Log::info("Build [{$buildId}] : Backup restore skipped. Backup source (Destination) does not exist.", $backup);
-
-                continue;
-            }
-
-            $result = $backup['isDir'] ? File::moveDirectory($backup['dest'], $backup['src']) : File::move($backup['dest'], $backup['src']);
-
-            if ($result) {
-                unset($newHistory[$histKey]);
-                File::put($historyPath, json_encode(array_values($newHistory)));
-                Log::info("Build [{$buildId}] : Backup restored.", $backup);
-            } else {
-                Log::error("Build [{$buildId}] : Backup restore failed.", $backup);
-            }
-        }
-    }
-
-    protected function backup(string $historyPath, string $src, string $dest, string $ts, string $buildId): bool
-    {
-        if (! File::exists($src)) {
-            $this->setTaskMessage("<error>Source file/directory does not exist at {$src}</error>");
-
-            return false;
-        }
-
-        if (! File::exists($historyPath)) {
-            File::ensureDirectoryExists(dirname($historyPath));
-            File::put($historyPath, '[]');
-            $history = [];
-        } else {
-            $history = File::json($historyPath);
-        }
-
-        File::ensureDirectoryExists(dirname($dest));
-        $result = File::isDirectory($src) ? File::moveDirectory($src, $dest) : File::move($src, $dest);
-
-        if ($result) {
-            $history[] = ['build' => $buildId, 'ts' => $ts, 'src' => $src, 'dest' => $dest, 'isDir' => File::isDirectory($src)];
-            File::put($historyPath, json_encode($history, JSON_PRETTY_PRINT));
-            $this->setTaskMessage("<info>Backup of {$src} to {$dest} was successful.</info>");
-        } else {
-            $this->setTaskMessage("<error>Backup of {$src} to {$dest} failed.</error>");
-        }
-
-        return $result;
-    }
-
     protected function setParameters(): bool
     {
-        $config = [];
-        $config['ts.instance'] = Carbon::now('UTC');
-        $config['ts.safe'] = $config['ts.instance']->format('Ymd\THis\Z');
-        $config['name'] = Str::lower(config('app.name'));
+        $config = config('dev.build');
+
         $config['version'] = app('git.version');
-        $config['id'] = "{$config['version']}-{$config['ts.safe']}";
-        $config['json.version'] = $config['version'];
-        $config['json.build'] = $config['ts.safe'];
-        $config['json.id'] = $config['id'];
+        $config['id'] = "{$config['version']}-{$config['ts']}";
 
-        $config['backup.path'] = joinPaths(config('dev.build.backup.path'), "{$config['version']}-{$config['ts.safe']}");
-        $config['backup.history'] = joinPaths(config('dev.build.backup.path'), 'history.json');
+        $config['output'] = [
+            'initial' => joinBasePath($config['phar']),
+            'final' => join_paths($config['path'], $config['id'], $config['phar']),
+        ];
 
-        foreach (config('dev.build.exclude', []) as $excludeKey => $exclude) {
-            $excBase = Str::of($exclude)
-                ->after(base_path())
-                ->split('/'.preg_quote(DIRECTORY_SEPARATOR, '/').'/', -1, PREG_SPLIT_NO_EMPTY)
-                ->toArray();
-            $config["backup.items.{$excludeKey}"] = ['src' => $exclude, 'dest' => join_paths($config['backup.path'], ...$excBase)];
+        $config['info'] = [
+            'version' => $config['version'],
+            'build' => $config['ts'],
+            'id' => $config['id'],
+        ];
+
+        if (! blank($config['exclude'] ?? []) && isset($config['backup']['path']) && isset($config['backup']['historyFile'])) {
+            if (! File::exists($config['backup']['historyFile'])) {
+                File::ensureDirectoryExists(dirname($config['backup']['historyFile']));
+                File::put($config['backup']['historyFile'], '[]');
+                $config['backup']['history'] = [];
+            }else {
+                $config['backup']['history'] = File::json($config['backup']['historyFile']);
+            }
+
+            $config['backup']['items'] = [];
+            foreach (($config['exclude'] ?? []) as $exclude) {
+                $excBase = Str::of($exclude)->after(base_path())->trim(DIRECTORY_SEPARATOR)->value();
+                $config['backup']['items'][] = [
+                    'src' => $exclude,
+                    'dest' => join_paths($config['backup']['path'], $config['id'], $excBase),
+                ];
+            }
         }
 
-        //        if ($this->config('get', 'version') === 'unreleased') {
-        //            $this->setTaskMessage('<error>App has not released yet.</error>');
-        //
-        //            return false;
-        //        }
-
-        $config['initial'] = join_paths(base_path(), "{$this->getBinary()}.phar");
-        $config['path'] = join_paths(config('dev.build.path'), $config['id']);
-        $config['phar'] = join_paths($config['path'], "{$config['name']}.phar");
-
-        $config['box.binary'] = join_paths(base_path(), 'vendor', 'laravel-zero', 'framework', 'bin', (windows_os() ? 'box.bat' : 'box'));
-
-        $distributions = config('dev.build.micro.distributions', []);
-
-        if ($this->option('no-distributions')) {
-            $this->setTaskMessage('<comment>Skipping distributions.</comment>');
-        } elseif (count($distributions) == 0) {
-            $this->setTaskMessage('<comment>No distributions to build.</comment>');
-        }
-
-        if ($this->option('no-distributions') || count($distributions) == 0) {
-            $this->configables['build'] = Arr::undot($config);
-
-            return true;
-        }
-
-        $config['spc.binary'] = config('dev.build.micro.spc');
-        if (blank($config['spc.binary'])) {
-            $this->setTaskMessage('<error>SPC binary path is not set.</error>');
-
-            return false;
-        } elseif (! File::exists($config['spc.binary'])) {
-            $this->setTaskMessage("<error>SPC binary does not exist at {$config['spc.binary']}</error>");
-
-            return false;
-        }
-
-        File::chmod($config['spc.binary'], octdec('0755'));
-
-        $microPath = config('dev.build.micro.path');
-        $microUrl = Str::of(config('dev.build.micro.url'))->trim()->finish('/');
-        $microArchivePattern = config('dev.build.micro.archivePattern', '');
-
-        foreach ($distributions as $distribution => $micro) {
-            $cnfKey = 'distributions.'.Str::replace('.', '_', $distribution);
-
-            $micro['remote'] = Str::of($micro['remote'])->trim()->ltrim('/')->value();
-
-            $config["{$cnfKey}.target"] = $distribution;
-            $config["{$cnfKey}.output"] = join_paths($config['path'], $micro['binary']);
-            $config["{$cnfKey}.os"] = $micro['os'];
-            $config["{$cnfKey}.arch"] = $micro['arch'];
-            $config["{$cnfKey}.md5sum"] = (Arr::has($micro, 'md5sum') && $micro['md5sum'] === true);
-            $config["{$cnfKey}.sfx.local"] = join_paths($microPath, $micro['local']);
-            $config["{$cnfKey}.sfx.localExists"] = File::exists($config["{$cnfKey}.sfx.local"]);
-            $config["{$cnfKey}.sfx.remote"] = $microUrl->finish($micro['remote'])->value();
-            $config["{$cnfKey}.sfx.remoteArchive"] = ! blank($microArchivePattern) && Str::isMatch($microArchivePattern, $config["{$cnfKey}.sfx.remote"]);
-
-            $downloadSuffix = Str::of($micro['remote'])->start('downloads/')->split('/\//', -1, PREG_SPLIT_NO_EMPTY)->toArray();
-            $downloadArchivePath = join_paths(dirname($config["{$cnfKey}.sfx.local"]), ...$downloadSuffix);
-            $downloadPath = $config["{$cnfKey}.sfx.remoteArchive"] ? $downloadArchivePath : $config["{$cnfKey}.sfx.local"];
-
-            $config["{$cnfKey}.sfx.downloadPath"] = $downloadPath;
-            $config["{$cnfKey}.sfx.downloadExists"] = File::exists($downloadPath);
-
-            $config["{$cnfKey}.sfx.archiveFile"] = blank($micro['archiveFile']) ? 'micro.sfx' : $micro['archiveFile'];
-            $config["{$cnfKey}.sfx.extractDir"] = join_paths(config('dev.temp'), Str::uuid());
-        }
-
-        $this->configables['build'] = Arr::undot($config);
+        $this->configables = $config;
 
         return true;
     }
@@ -415,39 +294,174 @@ class AppBuild extends TaskingCommand
     protected function prepare(): bool
     {
         $this->initalised = true;
-        $backupItems = $this->config('get', 'backup.items', []);
 
-        if (! blank($backupItems)) {
-            $ts = $this->config('get', 'ts.instance')->toIso8601ZuluString();
-            $buildId = $this->config('get', 'id');
-            $historyPath = $this->config('get', 'backup.history');
-
-            foreach ($backupItems as $item) {
-                if (! $this->backup($historyPath, $item['src'], $item['dest'], $ts, $buildId)) {
-                    return false;
-                }
-            }
-        }
-
-        $initial = $this->config('get', 'initial');
-        $boxDump = join_paths(dirname($initial), '.box_dump');
-
-        if (File::exists($boxDump) && File::isDirectory($boxDump)) {
-            File::deleteDirectory($boxDump);
-            $this->setTaskMessage('<comment>Old .box_dump deleted.</comment>');
-        }
-
+        $initial = $this->config('get', 'output.initial');
         if (File::exists($initial)) {
             File::delete($initial);
             $this->setTaskMessage('<comment>Old initial .phar file deleted.</comment>');
         }
 
-        foreach (config('dev.build.exclude', []) as $excludeKey => $exclude) {
-            $this->setTaskMessage("<comment>Excluding: {$exclude}</comment>");
+        $initialMd5sum = "{$initial}.md5sum";
+        if (File::exists($initialMd5sum)) {
+            File::delete($initialMd5sum);
+            $this->setTaskMessage('<comment>Old initial .phar.md5sum file deleted.</comment>');
         }
+
+        $boxDump = join_paths(dirname($initial), '.box_dump');
+        if (File::exists($boxDump) && File::isDirectory($boxDump)) {
+            File::deleteDirectory($boxDump);
+            $this->setTaskMessage('<comment>Old .box_dump deleted.</comment>');
+        }
+
+        $infoFile = $this->config('get', 'infoFile');
+        $info = $this->config('get', 'info');
+        File::put($infoFile, json_encode($info, JSON_PRETTY_PRINT));
+        $this->setTaskMessage("<info>Info file created at {$infoFile}</info>");
+
+        $finalDir = dirname($this->config('get', 'output.final'));
+        File::ensureDirectoryExists($finalDir);
+        $this->setTaskMessage("<info>Final output directory created at {$finalDir}</info>");
+
+        $finalInfo = join_paths($finalDir, basename($infoFile));
+        File::copy($infoFile, $finalInfo);
+        $this->setTaskMessage("<info>Build info file copied to {$finalInfo}</info>");
 
         return true;
     }
+
+    protected function backupExcludes(): bool
+    {
+        $this->initalised = true;
+
+        $buildId = $this->config('get', 'id');
+        $historyFile = $this->config('get', 'backup.historyFile');
+        $history = $this->config('get', 'backup.history');
+        $backups = $this->config('get', 'backup.items', []);
+
+        $result = true;
+        foreach($backups as $backup){
+            if (! File::exists($backup['src'])) {
+                $this->setTaskMessage("<error>Source file/directory does not exist at {$backup['src']}</error>");
+                if ($result === true) {
+                    $result = false;
+                }
+                continue;
+            }
+
+            File::ensureDirectoryExists(dirname($backup['dest']));
+            $isDir = File::isDirectory($backup['src']);
+            $moved = $isDir ? File::moveDirectory($backup['src'], $backup['dest']) : File::move($backup['src'], $backup['dest']);
+
+            if ($moved) {
+                $history[] = array_merge($backup, [
+                    'buildId' => $buildId,
+                    'ts' => Helper::ts()->toIso8601ZuluString(),
+                    'isDir' => $isDir,
+                ]);
+                File::put($historyFile, json_encode($history, JSON_PRETTY_PRINT));
+                $this->setTaskMessage("<info>Backup successful. Source: {$backup['src']} - Destination: {$backup['dest']}</info>");
+            } else {
+                $this->setTaskMessage("<error>Backup failed. Source: {$backup['src']} - Destination: {$backup['dest']}</error>");
+                if ($result === true) {
+                    $result = false;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    protected function compile(): bool
+    {
+        $initial = $this->config('get', 'output.initial');
+        $final = $this->config('get', 'output.final');
+        $actual = $this->option('leave-initial') ? $initial : $final;
+        $actualMd5sum = "{$actual}.md5sum";
+
+        $boxBinary = $this->config('get', 'box.binary');
+        $boxDefaults = [
+            'working-dir' => $this->config('get', 'box.working-dir'),
+            'config' => $this->config('get', 'box.config'),
+        ];
+
+        if ($this->output->isDebug()) {
+            $boxDefaults['debug'] = '';
+        }
+
+        $boxOptions = Helper::buildProcessArgs($this->option('box'), $boxDefaults);
+
+        File::ensureDirectoryExists(dirname($actual));
+        $process = Process::timeout($this->getTimeout())
+            ->run([$boxBinary, 'compile'] + $boxOptions);
+
+        if ($process->successful()) {
+            if ($actual != $initial) {
+                File::move($initial, $actual);
+            }
+            File::put($actualMd5sum, File::hash($actual));
+            $this->setTaskMessage("<info>Compile was successful and output is at {$actual}</info>");
+        } else {
+            $this->setTaskMessage("<error>Failed to compile the application. Exit Code: {$process->exitCode()}</error>");
+        }
+
+        return $process->successful();
+    }
+
+    protected function restoreBackups(bool $isSignal = false): bool
+    {
+        $buildId = $this->config('get', 'id', 'Unknown');
+        $historyFile = $this->config('get', 'backup.historyFile');
+        if (! File::exists($historyFile)) {
+            return false;
+        }
+
+        $history = collect(File::json($historyFile))->sortByDesc('ts')->toArray();
+        $newHistory = $history;
+
+        $result = true;
+        foreach ($history as $histKey => $backup) {
+            $msg = ''; $msgType = 'info';
+            if (File::exists($backup['src'])) {
+                $msg = "Build [{$buildId}] : Backup restore skipped. Backup destination (Source) already exists.";
+                $msgType = 'warning';
+            } elseif (! File::exists($backup['dest'])) {
+                $msg = "Build [{$buildId}] : Backup restore skipped. Backup source (Destination) does not exist.";
+                $msgType = 'warning';
+            }
+
+            if (blank($msg)){
+                $moved = $backup['isDir'] ? File::moveDirectory($backup['dest'], $backup['src']) : File::move($backup['dest'], $backup['src']);
+
+                $msg = "Build [{$buildId}] : Backup restore ";
+                if ($moved) {
+                    unset($newHistory[$histKey]);
+                    File::put($historyFile, json_encode(array_values($newHistory)));
+                    $msg .= 'successful.';
+                } else {
+                    $msg .= 'failed.';
+                    $msgType = 'error';
+                }
+                $msg .= " Source: {$backup['dest']} - Destination: {$backup['src']}";
+            }
+
+            if ($isSignal) {
+                Log::{$msgType}($msg, $backup);
+            } else {
+                $msgType = $msgType == 'warning' ? 'comment' : $msgType;
+                $this->setTaskMessage("<{$msgType}>{$msg}</{$msgType}>");
+            }
+
+            if ($msgType != 'info' && $result === true) {
+                $result = false;
+            }
+        }
+
+        $this->backupsRestored = true;
+
+        return $result;
+    }
+
+
 
     protected function pharAddFromString(string $path, string $file, string $content): true|string
     {
@@ -460,55 +474,7 @@ class AppBuild extends TaskingCommand
         return true;
     }
 
-    protected function compile(): bool
-    {
-        $initial = $this->config('get', 'initial');
-        $phar = $this->config('get', 'phar');
-        $actualOutput = $this->option('leave-initial') ? $initial : $phar;
 
-        $buildContent = json_encode($this->config('get', 'json'), JSON_PRETTY_PRINT);
-        if (File::put(base_path('build.json'), $buildContent, true) === false) {
-            $this->setTaskMessage('<error>Failed to write build.json file.</error>');
-
-            return false;
-        } else {
-            $this->setTaskMessage('<info>build.json file written successfully.</info>');
-        }
-
-        $boxBinary = $this->config('get', 'box.binary');
-        $boxDefaults = [
-            'working-dir' => base_path(),
-            'config' => base_path('box.json'),
-        ];
-
-        if ($this->output->isDebug()) {
-            $boxDefaults['debug'] = '';
-        }
-
-        $boxOptions = Helper::buildProcessArgs($this->option('box'), $boxDefaults);
-
-        $process = Process::timeout($this->getTimeout())
-            ->run([$boxBinary, 'compile'] + $boxOptions);
-
-        $initFile = File::exists($initial);
-
-        if ($process->successful()) {
-            if ($initFile) {
-                if (! $this->option('leave-initial')) {
-                    File::ensureDirectoryExists(dirname($phar));
-                    File::move($initial, $phar);
-                    File::put("$phar.md5sum", File::hash($phar));
-                }
-                $this->setTaskMessage("<info>Compile was successful and output is at {$actualOutput}</info>");
-            } else {
-                $this->setTaskMessage("<comment>Compile was successful but initial output does not exist at {$initial}</comment>");
-            }
-        } else {
-            $this->setTaskMessage("<error>Failed to compile the application. Exit Code: {$process->exitCode()}</error>");
-        }
-
-        return $process->successful() && $initFile;
-    }
 
     protected function checkDistributions(): ?bool
     {
@@ -682,11 +648,6 @@ class AppBuild extends TaskingCommand
         return true;
     }
 
-    private function getBinary(): string
-    {
-        return str_replace(["'", '"'], '', Artisan::artisanBinary());
-    }
-
     private function getTimeout(): ?int
     {
         throw_if(! is_numeric($this->option('timeout')), 'The timeout value must be a number.');
@@ -702,31 +663,26 @@ class AppBuild extends TaskingCommand
             return $isSignal ? self::SUCCESS : $this;
         }
 
-        if (File::exists(base_path('build.json'))) {
-            File::delete(base_path('build.json'));
+        if (File::exists($this->config('get', 'infoFile'))) {
+            File::delete($this->config('get', 'infoFile'));
         }
 
-        foreach ($this->config('get', 'distributions', []) as $distribution) {
-            if (File::exists($distribution['sfx']['extractDir'])) {
-                File::deleteDirectory($distribution['sfx']['extractDir']);
-            }
+        if (! $this->backupsRestored){
+            $this->restoreBackups($isSignal);
         }
 
-        $this->restoreBackups();
-        //        TODO: Remove old backup directories
-        //        $historyPath = $this->config('get', 'backup.history');
-        //        if (File::exists($historyPath)) {
-        //            $history = File::json($historyPath);
-        //            if (blank($history)) {
-        //                $backupPath = config('dev.build.backup.path');
-        //                $dirs = Finder::create()->in($backupPath)->directories()->sortByName();
-        //                foreach ($dirs as $dir) {
-        //                    if (File::isEmptyDirectory($dir->getPathname())) {
-        //                        File::deleteDirectory($dir->getPathname());
-        //                    }
-        //                }
-        //            }
-        //        }
+        $backupPath = $this->config('get', 'backup.path');
+        $dirs = Finder::create()->in($backupPath)->directories()->sortByName();
+        foreach($dirs as $dir){
+            $path = $dir->getPathname();
+            do {
+                if (File::isEmptyDirectory($path)){
+                    $this->info("Deleting {$path}");
+                    File::deleteDirectory($path);
+                }
+                $path = dirname($path);
+            } while($path != $backupPath);
+        }
 
         return $isSignal ? self::SUCCESS : $this;
     }
