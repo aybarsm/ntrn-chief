@@ -19,6 +19,7 @@ return Helper::isPhar() ? [] : [
     ],
     'build' => [
         'path' => join_paths(base_path(), 'builds'),
+        'info' => join_paths(base_path(), 'build.json'),
         'chmod' => '0755',
         'backup' => [
             'path' => join_paths(base_path(), 'builds', 'backups'),
@@ -28,15 +29,13 @@ return Helper::isPhar() ? [] : [
             config_path('dev.php'),
         ],
         'spc' => [
-            'binary' => [
-                'local' => join_paths(base_path(), 'builds', 'utils', 'spc', 'spc-bin', '2.3.6_macos-aarch64'),
-                'chmod' => '0755',
-                'remote' => [
-                    'url' => 'https://github.com/crazywhalecc/static-php-cli/releases/download/2.3.6/spc-macos-aarch64.tar.gz',
-                    'saveAs' => join_paths(base_path(), 'builds', 'utils', 'spc', 'spc-bin', '2.3.6_spc-macos-aarch64.tar.gz'),
-                    'archive' => true,
-                    'archiveFile' => 'spc',
-                ],
+            'local' => join_paths(base_path(), 'builds', 'utils', 'spc', 'spc-bin', '2.3.6_macos-aarch64'),
+            'chmod' => '0755',
+            'remote' => [
+                'url' => 'https://github.com/crazywhalecc/static-php-cli/releases/download/2.3.6/spc-macos-aarch64.tar.gz',
+                'saveAs' => join_paths(base_path(), 'builds', 'utils', 'spc', 'spc-bin', '2.3.6_spc-macos-aarch64.tar.gz'),
+                'archive' => true,
+                'archiveFile' => 'spc',
             ],
         ],
         'static' => [

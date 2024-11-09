@@ -9,6 +9,7 @@ use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -22,6 +23,7 @@ class NtrnServiceProvider extends ServiceProvider
         //        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
         App::booted(function () {
             static::initPromptTheme();
+            static::initValidatorExtensions();
         });
     }
 
@@ -82,5 +84,36 @@ class NtrnServiceProvider extends ServiceProvider
         \App\Prompts\Prompt::addTheme('ntrn', array_merge($ntrn, $additional));
 
         \App\Prompts\Prompt::theme('ntrn');
+    }
+
+    protected static function initValidatorExtensions(): void
+    {
+        Validator::replacer('distinct_with', function ($message, $attribute, $rule, $parameters, \Illuminate\Validation\Validator $validator) {
+            $value = [$validator->getValue($attribute)];
+            foreach($parameters as $param) {
+                $value[] = $validator->getValue($param);
+            }
+            $value = Arr::join($value, ' + ');
+            $params = '[' . Arr::join($parameters, ', ', ' and ') . '] field' . (count($parameters) > 1 ? 's' : '');
+            return "The {$attribute} field must consist a distinct combination with {$params}. Combination of [{$value}] already exists.";
+        });
+
+        Validator::extendDependent('distinct_with', function ($attribute, $value, $parameters, \Illuminate\Validation\Validator $validator) {
+            if (! isset($validator->customValues['ruleDistinctWith'])) {
+                $validator->customValues['ruleDistinctWith'] = [];
+            }
+
+            $entry = [$value];
+            foreach($parameters as $param) {
+                $entry[] = $validator->getValue($param);
+            }
+
+            if (in_array($entry, $validator->customValues['ruleDistinctWith'])) {
+                return false;
+            }
+
+            $validator->customValues['ruleDistinctWith'][] = $entry;
+            return true;
+        });
     }
 }

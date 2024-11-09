@@ -26,6 +26,7 @@ trait App
             $env = [
                 \LaravelZero\Framework\Commands\StubPublishCommand::class,
                 \Illuminate\Foundation\Console\VendorPublishCommand::class,
+                \Illuminate\Foundation\Console\RuleMakeCommand::class,
             ];
         }
 
