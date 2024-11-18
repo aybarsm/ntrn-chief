@@ -5,34 +5,42 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Attributes\Console\CommandTask;
-use App\Enums\IndicatorType;
 use App\Framework\Commands\TaskingCommand;
-use App\Prompts\Progress;
 use App\Services\Archive;
 use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Fluent;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\RequiredIf;
 use Psr\Http\Message\ResponseInterface;
+
 use function Illuminate\Filesystem\join_paths;
 
 #[CommandTask('setParameters', null, 'Set Parameters', true)]
 #[CommandTask('selectOptions', null, 'Select Options to Distribute')]
 #[CommandTask('downloadSfx', null, 'Download Micro Sfx Files')]
 #[CommandTask('extractSfx', null, 'Extract Micro Sfx Files')]
+#[CommandTask('buildStatics', null, 'Build Static Binaries')]
 class AppDistribute extends TaskingCommand
 {
     use Configable;
 
     protected $signature = 'app:distribute';
+
     protected $description = 'Command description';
+
     protected array $prompts = [];
+
+    public function handle()
+    {
+        $this->executeTasks();
+
+    }
+
     protected function setParameters(): bool
     {
         $pharName = Str::of(config('app.name'))->lower()->finish('.phar')->value();
@@ -65,7 +73,7 @@ class AppDistribute extends TaskingCommand
         $rules = [
             'builds' => 'array|min:1',
             'spc' => 'array|required',
-            'spc.local' => 'bail|required|string',
+            'spc.local' => 'bail|required|string|file_exists',
             'spc.chmod' => 'required|string|numeric',
             'spc.remote' => 'array',
             'spc.remote.url' => 'string|url',
@@ -77,6 +85,7 @@ class AppDistribute extends TaskingCommand
             'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
             'static.*.arch' => 'required|string|in:x86_64,aarch64',
             'static.*.local' => 'required|string',
+            'static.*.chmod' => 'string|numeric',
             'static.*.md5sum' => 'required|boolean',
             'static.*.remote' => 'bail|array',
             'static.*.remote.url' => 'string|url',
@@ -97,10 +106,11 @@ class AppDistribute extends TaskingCommand
             return ! File::exists((string) $item->get('local'));
         });
 
-        if ($validator->fails()){
-            foreach($validator->errors()->all() as $error){
+        if ($validator->fails()) {
+            foreach ($validator->errors()->all() as $error) {
                 $this->setTaskMessage("<error>{$error}</error>");
             }
+
             return false;
         }
 
@@ -108,6 +118,7 @@ class AppDistribute extends TaskingCommand
             $item['localExists'] = File::exists($item['local']);
             $item['downloadExists'] = ! $item['localExists'] && File::exists($item['remote']['saveAs']);
             $item['dist'] = "{$item['os']}-{$item['arch']}";
+
             return [$item['dist'] => $item];
         });
 
@@ -121,19 +132,23 @@ class AppDistribute extends TaskingCommand
     protected function selectOptions(): bool
     {
         $builds = $this->config('get', 'builds', []);
+        $buildInfoFile = null;
         $this->prompts['phar'] = $this->prompt('select',
             label: 'Select Build to Distribute',
             options: $builds,
             default: 0,
+            validate: function ($value) use(&$buildInfoFile) {
+                $buildInfoFile = join_paths(dirname($value), 'build.json');
+                if (! File::exists($buildInfoFile)) {
+                    return "Build information file does not exist at {$buildInfoFile}";
+                }
+                return null;
+            },
         );
 
         $this->configables['phar'] = $this->prompts['phar']->prompt();
-//        $this->prompts['build']->hint = "Phar file: {$this->configables['build']}";
-
-//        $this->configables['build'] = [
-//            'name' => $build,
-//            'path' => join_paths(config('dev.build.path'), $build),
-//        ];
+        $this->configables['buildInfoFile'] = $buildInfoFile;
+        $this->configables['buildInfo'] = File::json($buildInfoFile);
 
         $dists = $this->config('get', 'dists', []);
 
@@ -191,6 +206,7 @@ class AppDistribute extends TaskingCommand
 
         return true;
     }
+
     protected function extractSfx(): bool
     {
         $statics = Arr::only($this->config('get', 'static'), $this->config('get', 'dist'));
@@ -221,6 +237,7 @@ class AppDistribute extends TaskingCommand
             } catch (\Throwable $exception) {
                 $this->setTaskMessage("<error>{$sfx['dist']} Sfx archive could not be extracted from {$sfx['remote']['saveAs']}</error>");
                 $this->setTaskMessage("<error>Exception Message: {$exception->getMessage()}</error>");
+
                 continue;
             }
 
@@ -235,27 +252,96 @@ class AppDistribute extends TaskingCommand
     protected function buildStatics(): bool
     {
         $statics = Arr::only($this->config('get', 'static'), $this->config('get', 'dist'));
+        $basePhar = $this->config('get', 'phar');
+        $baseBuildInfo = $this->config('get', 'buildInfo');
 
-        foreach ($statics as $dist => $static) {
-            $progress = $this->prompt('progress', steps: 0);
-            $progress = Helper::buildProgress($progress, $dist);
-            $progress->config('set', 'auto.finish', true);
-            $progress->config('set', 'auto.clear', true);
-            $progress->config('set', 'show.finish', 2);
+        $spcBinary = $this->config('get', 'spc.local');
+        $spcChmod = $this->config('get', 'spc.chmod');
+        File::chmod($spcBinary, octdec($spcChmod));
+        $spcDefaults = [
+            'debug',
+            'no-interaction',
+        ];
 
-            $progress->start();
-            $progress->advance();
-            $progress->finish();
+        foreach($statics as $dist => $sfx) {
+            if (! $sfx['localExists']) {
+                $this->setTaskMessage("<error>{$sfx['dist']} Sfx does not exist at {$sfx['local']}</error>");
+
+                continue;
+            }
+
+            $static = join_paths(dirname($basePhar), $sfx['binary']);
+            $staticMd5sum = "{$static}.md5sum";
+            $distPhar = "{$static}.phar";
+            foreach([$static, $staticMd5sum, $distPhar] as $file) {
+                if (File::exists($file)) {
+                    $this->setTaskMessage("<info>Deleting existing file for {$sfx['dist']} at {$file}</info>");
+                    File::delete($file);
+                }
+            }
+            $buildInfo = json_encode(array_merge($baseBuildInfo, [
+                'os' => $sfx['os'],
+                'arch' => $sfx['arch'],
+                'dist' => $sfx['dist'],
+            ]));
+
+            File::ensureDirectoryExists(dirname($static));
+            if (! File::copy($basePhar, $distPhar)) {
+                $this->setTaskMessage("<error>Phar {$basePhar} could not be copied to {$distPhar} for {$sfx['dist']}</error>");
+
+                continue;
+            }
+
+            $buildInfoResult = $this->pharAddFromString($distPhar, 'build.json', $buildInfo);
+            if ($buildInfoResult !== true) {
+                $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildInfoResult}</error>");
+
+                continue;
+            }
+
+            $output = $this->prompt('flowingOutput', label: "Building Static Binary for {$sfx['dist']}", rows: 10);
+            $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], [
+                'with-micro' => $sfx['local'],
+                'output' => $static,
+            ], $spcDefaults);
+            $building = Process::timeout(60)->start($spcCmd);
+
+            while ($building->running()) {
+                $output->addOutput($building->latestOutput());
+            }
+
+            $process = $building->wait();
+            $output->finish();
+
+            if ($process->successful()) {
+                $output->clear();
+                if (isset($sfx['chmod'])) {
+                    File::chmod($static, octdec($sfx['chmod']));
+                    $this->setTaskMessage("<info>Chmod set to {$sfx['chmod']} for {$sfx['dist']} at {$static}</info>");
+                }
+
+                if (Arr::has($sfx, 'md5sum') && $sfx['md5sum'] === true) {
+                    File::put($staticMd5sum, File::hash($static));
+                    $this->setTaskMessage("<info>MD5Sum created for {$sfx['dist']} is at {$staticMd5sum}</info>");
+                }
+
+                $this->setTaskMessage("<info>Static Binary for {$sfx['dist']} created successfully at {$static}</info>");
+            } else {
+                $this->setTaskMessage("<error>Static Binary for {$sfx['dist']} could not be created. Exit Code: {$process->exitCode()}</error>");
+            }
         }
 
         return true;
     }
 
-
-    public function handle()
+    protected function pharAddFromString(string $path, string $file, string $content): true|string
     {
-        $this->executeTasks();
-//        dump($this->config('get', 'static'));
-//        dump($this->config('get', 'dist'));
+        try {
+            (new \Phar($path))->addFromString($file, $content);
+        } catch (\Exception $exception) {
+            return $exception->getMessage();
+        }
+
+        return true;
     }
 }

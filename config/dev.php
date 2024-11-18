@@ -3,9 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Helper;
-
 use Illuminate\Console\Application;
-use function Illuminate\Filesystem\join_paths;
 
 return Helper::isPhar() ? [] : [
     'temp' => joinPaths(sys_get_temp_dir(), 'ntrn-chief_dev'),
@@ -21,7 +19,7 @@ return Helper::isPhar() ? [] : [
     'build' => [
         'path' => joinBasePath('builds'),
         'infoFile' => joinBasePath('build.json'),
-        'phar' => str_replace(["'", '"'], '', Application::artisanBinary()) . '.phar',
+        'phar' => str_replace(["'", '"'], '', Application::artisanBinary()).'.phar',
         'ts' => Helper::tsSafe(),
         'chmod' => '0755',
         'box' => [
@@ -53,6 +51,7 @@ return Helper::isPhar() ? [] : [
                 'os' => 'linux',
                 'arch' => 'x86_64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-x86_64.sfx'),
+                'chmod' => '0755',
                 'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-linux-x86_64.tar.gz',
@@ -66,6 +65,7 @@ return Helper::isPhar() ? [] : [
                 'os' => 'linux',
                 'arch' => 'aarch64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-aarch64.sfx'),
+                'chmod' => '0755',
                 'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-linux-aarch64.tar.gz',
@@ -79,6 +79,7 @@ return Helper::isPhar() ? [] : [
                 'os' => 'darwin',
                 'arch' => 'aarch64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-aarch64.sfx'),
+                'chmod' => '0755',
                 'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-macos-aarch64.tar.gz',
@@ -92,6 +93,7 @@ return Helper::isPhar() ? [] : [
                 'os' => 'darwin',
                 'arch' => 'x86_64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-x86_64.sfx'),
+                'chmod' => '0755',
                 'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-macos-x86_64.tar.gz',

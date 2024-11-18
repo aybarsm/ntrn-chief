@@ -2,7 +2,6 @@
 
 namespace App\Framework\Commands;
 
-use App\Prompts\Prompt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command as LaravelZeroCommand;
@@ -73,6 +72,10 @@ class Command extends LaravelZeroCommand
 
     public function run(InputInterface $input, OutputInterface $output): int
     {
+        //        if ($output->getVerbosity() === OutputInterface::VERBOSITY_NORMAL){
+        //            $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
+        //        }
+
         $this->initLogger();
 
         return parent::run($input, $output);
@@ -80,6 +83,10 @@ class Command extends LaravelZeroCommand
 
     public function execute(InputInterface $input, OutputInterface $output): int
     {
+        //        if ($output->getVerbosity() === OutputInterface::VERBOSITY_NORMAL){
+        //            $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
+        //        }
+
         $this->initLogger();
 
         return parent::execute($input, $output);

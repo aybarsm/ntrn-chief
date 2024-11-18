@@ -7,8 +7,10 @@ use App\Actions\AppUpdateGitHubRelease;
 use App\Contracts\Actions\AppUpdateDirectContract;
 use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Traits\Configable;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -91,11 +93,12 @@ class NtrnServiceProvider extends ServiceProvider
     {
         Validator::replacer('distinct_with', function ($message, $attribute, $rule, $parameters, \Illuminate\Validation\Validator $validator) {
             $value = [$validator->getValue($attribute)];
-            foreach($parameters as $param) {
+            foreach ($parameters as $param) {
                 $value[] = $validator->getValue($param);
             }
             $value = Arr::join($value, ' + ');
-            $params = '[' . Arr::join($parameters, ', ', ' and ') . '] field' . (count($parameters) > 1 ? 's' : '');
+            $params = '['.Arr::join($parameters, ', ', ' and ').'] field'.(count($parameters) > 1 ? 's' : '');
+
             return "The {$attribute} field must consist a distinct combination with {$params}. Combination of [{$value}] already exists.";
         });
 
@@ -105,7 +108,7 @@ class NtrnServiceProvider extends ServiceProvider
             }
 
             $entry = [$value];
-            foreach($parameters as $param) {
+            foreach ($parameters as $param) {
                 $entry[] = $validator->getValue($param);
             }
 
@@ -114,7 +117,16 @@ class NtrnServiceProvider extends ServiceProvider
             }
 
             $validator->customValues['ruleDistinctWith'][] = $entry;
+
             return true;
+        });
+
+        Validator::replacer('file_exists', function ($message, $attribute, $rule, $parameters, \Illuminate\Validation\Validator $validator) {
+            return "The {$attribute} file does not exist.";
+        });
+
+        Validator::extend('file_exists', function ($attribute, $value, $parameters, \Illuminate\Validation\Validator $validator) {
+            return File::exists($value);
         });
     }
 }

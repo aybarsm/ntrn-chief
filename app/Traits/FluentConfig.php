@@ -11,7 +11,7 @@ trait FluentConfig
     protected function config(): Fluent
     {
         if (! isset($this->config)) {
-            $this->config = new Fluent();
+            $this->config = new Fluent;
         }
 
         return $this->config;

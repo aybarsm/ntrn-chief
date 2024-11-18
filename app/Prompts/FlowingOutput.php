@@ -4,111 +4,25 @@ namespace App\Prompts;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Laravel\Prompts\Concerns\Scrolling;
-use Laravel\Prompts\Concerns\Truncation;
-use Laravel\Prompts\Concerns\TypedValue;
-use Laravel\Prompts\Support\Utils;
-use function Symfony\Component\Translation\t;
 
 class FlowingOutput extends Prompt
 {
-    use Scrolling, Truncation, TypedValue;
     public int $width = 120;
+
     public string $outputBody = '';
+
     public Collection $outputLines;
 
     protected bool $originalAsync;
 
     public function __construct(
         public string $label = '',
-        int $rows = 5,
+        public int $rows = 5,
         public string $hint = '',
         public bool $naturalFlow = true,
     ) {
-        $this->outputLines = collect();
-
-        $this->scroll = $rows;
-
-        $this->initializeScrolling();
-        $this->trackTypedValue(
-            default: '',
-            submit: false,
-            allowNewLine: true,
-        );
+        $this->outputLines = Str::lines(str_repeat(PHP_EOL, $this->rows), -1);
     }
-
-    public function wrappedValue(): string
-    {
-        return $this->mbWordwrap($this->value(), $this->width, PHP_EOL, true);
-    }
-
-    public function lines(): array
-    {
-        return explode(PHP_EOL, $this->wrappedValue());
-    }
-
-    protected function currentLineIndex(): int
-    {
-        $totalLineLength = 0;
-
-        return (int) Utils::search($this->lines(), function ($line) use (&$totalLineLength) {
-            $totalLineLength += mb_strlen($line) + 1;
-
-            return $totalLineLength > $this->cursorPosition;
-        }) ?: 0;
-    }
-
-    protected function adjustVisibleWindow(): void
-    {
-        if (count($this->lines()) < $this->scroll) {
-            return;
-        }
-
-        $currentLineIndex = $this->currentLineIndex();
-
-        while ($this->firstVisible + $this->scroll <= $currentLineIndex) {
-            $this->firstVisible++;
-        }
-
-        if ($currentLineIndex === $this->firstVisible - 1) {
-            $this->firstVisible = max(0, $this->firstVisible - 1);
-        }
-
-        // Make sure there are always the scroll amount visible
-        if ($this->firstVisible + $this->scroll > count($this->lines())) {
-            $this->firstVisible = count($this->lines()) - $this->scroll;
-        }
-    }
-
-    protected function cursorOffset(): int
-    {
-        $cursorOffset = 0;
-
-        preg_match_all('/\S{'.$this->width.',}/u', $this->value(), $matches, PREG_OFFSET_CAPTURE);
-
-        foreach ($matches[0] as $match) {
-            if ($this->cursorPosition + $cursorOffset >= $match[1] + mb_strwidth($match[0])) {
-                $cursorOffset += (int) floor(mb_strwidth($match[0]) / $this->width);
-            }
-        }
-
-        return $cursorOffset;
-    }
-
-    public function valueWithCursor(): string
-    {
-        return $this->addCursor($this->wrappedValue(), $this->cursorPosition + $this->cursorOffset(), -1);
-    }
-
-    public function visible(): array
-    {
-        $this->adjustVisibleWindow();
-
-        $withCursor = $this->valueWithCursor();
-
-        return array_slice(explode(PHP_EOL, $withCursor), $this->firstVisible, $this->scroll, preserve_keys: true);
-    }
-
 
     public function start(): void
     {
@@ -150,39 +64,12 @@ class FlowingOutput extends Prompt
         if ($output->isEmpty()) {
             return;
         }
-        $this->outputLines->push($output);
-    }
-
-    protected function handleDownKey(): void
-    {
-        $lines = $this->lines();
-
-        // Line length + 1 for the newline character
-        $lineLengths = array_map(fn ($line, $index) => mb_strlen($line) + ($index === count($lines) - 1 ? 0 : 1), $lines, range(0, count($lines) - 1));
-
-        $currentLineIndex = $this->currentLineIndex();
-
-        if ($currentLineIndex === count($lines) - 1) {
-            // They're already at the last line, jump them to the last position
-            $this->cursorPosition = mb_strlen(implode(PHP_EOL, $lines));
-
-            return;
+        $this->outputLines = $this->outputLines->concat($output);
+        if ($this->state === 'active') {
+            $this->start();
+        } else {
+            $this->render();
         }
-
-        // Lines up to and including the current line
-        $currentLines = array_slice($lineLengths, 0, $currentLineIndex + 1);
-
-        $currentColumn = Utils::last($currentLines) - (array_sum($currentLines) - $this->cursorPosition);
-
-        $destinationLineLength = $lineLengths[$currentLineIndex + 1] ?? Utils::last($currentLines);
-
-        if ($currentLineIndex + 1 !== count($lines) - 1) {
-            $destinationLineLength--;
-        }
-
-        $newColumn = min(max(0, $destinationLineLength), $currentColumn);
-
-        $this->cursorPosition = array_sum($currentLines) + $newColumn;
     }
 
     public function prompt(): never

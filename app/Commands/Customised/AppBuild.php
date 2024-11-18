@@ -3,15 +3,12 @@
 namespace App\Commands\Customised;
 
 use App\Attributes\Console\CommandTask;
-use App\Enums\IndicatorType;
 use App\Framework\Commands\TaskingCommand;
 use App\Prompts\Progress;
 use App\Services\Archive;
 use App\Services\Helper;
 use App\Traits\Configable;
-use Illuminate\Console\Application as Artisan;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -26,13 +23,14 @@ use function Illuminate\Filesystem\join_paths;
 #[CommandTask('setParameters', null, 'Set build parameters', true)]
 #[CommandTask('prepare', null, 'Prepare compile environment', true)]
 #[CommandTask('backupExcludes', null, 'Backup Excluded Files & Directories', true)]
-#[CommandTask('compile', IndicatorType::SPINNER, 'Compile .phar file', true)]
+#[CommandTask('compile', null, 'Compile .phar file', true)]
 #[CommandTask('restoreBackups', null, 'Restore Excluded File & Directory Backups')]
-//#[CommandTask('backupExcludes', null, 'Backup Excluded Files & Directories', true)]
 class AppBuild extends TaskingCommand
 {
     use Configable;
+
     protected bool $initalised = false;
+
     protected bool $backupsRestored = false;
 
     protected $signature = 'app:build
@@ -50,7 +48,6 @@ class AppBuild extends TaskingCommand
         });
 
         $this->executeTasks();
-        dump($this->config('get', 'backup'));
     }
 
     protected function checkRepoStatus(): bool
@@ -272,7 +269,7 @@ class AppBuild extends TaskingCommand
                 File::ensureDirectoryExists(dirname($config['backup']['historyFile']));
                 File::put($config['backup']['historyFile'], '[]');
                 $config['backup']['history'] = [];
-            }else {
+            } else {
                 $config['backup']['history'] = File::json($config['backup']['historyFile']);
             }
 
@@ -339,12 +336,13 @@ class AppBuild extends TaskingCommand
         $backups = $this->config('get', 'backup.items', []);
 
         $result = true;
-        foreach($backups as $backup){
+        foreach ($backups as $backup) {
             if (! File::exists($backup['src'])) {
                 $this->setTaskMessage("<error>Source file/directory does not exist at {$backup['src']}</error>");
                 if ($result === true) {
                     $result = false;
                 }
+
                 continue;
             }
 
@@ -388,13 +386,25 @@ class AppBuild extends TaskingCommand
             $boxDefaults['debug'] = '';
         }
 
+        $boxDefaults['debug'] = '';
+
         $boxOptions = Helper::buildProcessArgs($this->option('box'), $boxDefaults);
 
+        $output = $this->prompt('flowingOutput', label: 'Compiling App', rows: 10);
+
         File::ensureDirectoryExists(dirname($actual));
-        $process = Process::timeout($this->getTimeout())
-            ->run([$boxBinary, 'compile'] + $boxOptions);
+        $compiling = Process::timeout($this->getTimeout())
+            ->start([$boxBinary, 'compile'] + $boxOptions);
+
+        while ($compiling->running()) {
+            $output->addOutput($compiling->latestOutput());
+        }
+
+        $process = $compiling->wait();
+        $output->finish();
 
         if ($process->successful()) {
+            $output->clear();
             if ($actual != $initial) {
                 File::move($initial, $actual);
             }
@@ -420,7 +430,8 @@ class AppBuild extends TaskingCommand
 
         $result = true;
         foreach ($history as $histKey => $backup) {
-            $msg = ''; $msgType = 'info';
+            $msg = '';
+            $msgType = 'info';
             if (File::exists($backup['src'])) {
                 $msg = "Build [{$buildId}] : Backup restore skipped. Backup destination (Source) already exists.";
                 $msgType = 'warning';
@@ -429,7 +440,7 @@ class AppBuild extends TaskingCommand
                 $msgType = 'warning';
             }
 
-            if (blank($msg)){
+            if (blank($msg)) {
                 $moved = $backup['isDir'] ? File::moveDirectory($backup['dest'], $backup['src']) : File::move($backup['dest'], $backup['src']);
 
                 $msg = "Build [{$buildId}] : Backup restore ";
@@ -461,8 +472,6 @@ class AppBuild extends TaskingCommand
         return $result;
     }
 
-
-
     protected function pharAddFromString(string $path, string $file, string $content): true|string
     {
         try {
@@ -473,8 +482,6 @@ class AppBuild extends TaskingCommand
 
         return true;
     }
-
-
 
     protected function checkDistributions(): ?bool
     {
@@ -667,21 +674,21 @@ class AppBuild extends TaskingCommand
             File::delete($this->config('get', 'infoFile'));
         }
 
-        if (! $this->backupsRestored){
+        if (! $this->backupsRestored) {
             $this->restoreBackups($isSignal);
         }
 
         $backupPath = $this->config('get', 'backup.path');
         $dirs = Finder::create()->in($backupPath)->directories()->sortByName();
-        foreach($dirs as $dir){
+        foreach ($dirs as $dir) {
             $path = $dir->getPathname();
             do {
-                if (File::isEmptyDirectory($path)){
+                if (File::isEmptyDirectory($path)) {
                     $this->info("Deleting {$path}");
                     File::deleteDirectory($path);
                 }
                 $path = dirname($path);
-            } while($path != $backupPath);
+            } while ($path != $backupPath);
         }
 
         return $isSignal ? self::SUCCESS : $this;
