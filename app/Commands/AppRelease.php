@@ -6,14 +6,14 @@ namespace App\Commands;
 
 use App\Attributes\Console\CommandTask;
 use App\Framework\Commands\TaskingCommand;
-use App\Services\GitHub\Contracts\GitHubContract;
 use App\Traits\Configable;
-use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
-#[CommandTask('setParams', null, 'Set Parameters')]
-#[CommandTask('gatherBuilds', null, 'Gathering Builds')]
+use function Illuminate\Filesystem\join_paths;
+
+#[CommandTask('setParameters', null, 'Set Parameters', true)]
+#[CommandTask('selectOptions', null, 'Select Options to Release')]
 class AppRelease extends TaskingCommand
 {
     use Configable;
@@ -22,18 +22,17 @@ class AppRelease extends TaskingCommand
 
     protected $description = 'Release the built application';
 
-    protected ?PendingProcess $client;
+    protected array $prompts = [];
 
-    protected function setParams(): bool
+    public function handle(): void
     {
-        $this->client = app(GitHubContract::class)->getDevClient();
-
-        return true;
+        $this->executeTasks();
     }
 
-    protected function gatherBuilds(): bool
+    protected function setParameters(): bool
     {
-        $builds = collect(File::directories(config('dev.build.path')))
+        $buildPath = config('dev.build.path', base_path('builds'));
+        $data['builds'] = collect(File::directories($buildPath))
             ->map(function ($item) {
                 return basename($item);
             })
@@ -41,22 +40,38 @@ class AppRelease extends TaskingCommand
                 return Str::isMatch('/^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/', $item);
             })
             ->sortDesc()
-            ->values();
+            ->map(function ($item) use ($buildPath) {
+                return join_paths($buildPath, $item);
+            })
+            ->values()
+            ->toArray();
 
-        if ($builds->isEmpty()) {
-            $this->setTaskMessage('<error>No builds found</error>');
-
-            return false;
-        }
-
-        $this->config('set', 'builds', $builds->toArray());
+        $this->configables = $data;
 
         return true;
     }
 
-    public function handle()
+    protected function selectOptions(): bool
     {
-        $this->executeTasks();
-        dump($this->config('get', 'builds'));
+        $builds = $this->config('get', 'builds', []);
+        $releaseInfoFile = null;
+        $this->prompts['build'] = $this->prompt('select',
+            label: 'Select Build to Release',
+            options: $builds,
+            default: 0,
+            validate: function ($value) use (&$releaseInfoFile) {
+                $releaseInfoFile = join_paths($value, 'release.json');
+                if (! File::exists($releaseInfoFile)) {
+                    return "Build information file does not exist at {$releaseInfoFile}";
+                }
+
+                return null;
+            },
+        );
+
+        $this->configables['release'] = $this->prompts['build']->prompt();
+        $this->configables['releaseInfo'] = File::json($releaseInfoFile);
+
+        return true;
     }
 }

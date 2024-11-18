@@ -4,17 +4,13 @@ namespace App\Commands\Customised;
 
 use App\Attributes\Console\CommandTask;
 use App\Framework\Commands\TaskingCommand;
-use App\Prompts\Progress;
-use App\Services\Archive;
 use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Finder\Finder;
 
 use function Illuminate\Filesystem\join_paths;
@@ -35,9 +31,7 @@ class AppBuild extends TaskingCommand
 
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
-    {--b|box=* : Extra options to pass to Box}
-    {--leave-initial : Don\'t rename/move the initial .phar file after compiling}
-    {--no-distributions : Skip building distributions}';
+    {--b|box=* : Extra options to pass to Box}';
 
     protected $description = 'Build a single file executable (Customised)';
 
@@ -95,6 +89,7 @@ class AppBuild extends TaskingCommand
         }
 
         $branch = Str::firstLine($result->output());
+        $this->config('set', 'git.branch', $branch);
         $table[] = ['Branch', $branch];
 
         $result = $process->run('git status --porcelain');
@@ -264,6 +259,20 @@ class AppBuild extends TaskingCommand
             'id' => $config['id'],
         ];
 
+        $config['release'] = [
+            'release_id' => null,
+            'github' => [
+                'tag_name' => $config['version'],
+                'target_commitish' => $this->config('get', 'git.branch'),
+                'name' => $config['version'],
+                'body' => $config['id'],
+                'draft' => false,
+                'prerelease' => false,
+                'generate_release_notes' => false,
+            ],
+            'assets' => [],
+        ];
+
         if (! blank($config['exclude'] ?? []) && isset($config['backup']['path']) && isset($config['backup']['historyFile'])) {
             if (! File::exists($config['backup']['historyFile'])) {
                 File::ensureDirectoryExists(dirname($config['backup']['historyFile']));
@@ -373,9 +382,8 @@ class AppBuild extends TaskingCommand
     {
         $initial = $this->config('get', 'output.initial');
         $final = $this->config('get', 'output.final');
-        $actual = $this->option('leave-initial') ? $initial : $final;
-        $actualMd5sum = "{$actual}.md5sum";
-
+        $finalMd5sum = "{$final}.md5sum";
+        $finalReleaseFile = join_paths(dirname($final), $this->config('get', 'releaseFile'));
         $boxBinary = $this->config('get', 'box.binary');
         $boxDefaults = [
             'working-dir' => $this->config('get', 'box.working-dir'),
@@ -392,7 +400,6 @@ class AppBuild extends TaskingCommand
 
         $output = $this->prompt('flowingOutput', label: 'Compiling App', rows: 10);
 
-        File::ensureDirectoryExists(dirname($actual));
         $compiling = Process::timeout($this->getTimeout())
             ->start([$boxBinary, 'compile'] + $boxOptions);
 
@@ -405,11 +412,18 @@ class AppBuild extends TaskingCommand
 
         if ($process->successful()) {
             $output->clear();
-            if ($actual != $initial) {
-                File::move($initial, $actual);
-            }
-            File::put($actualMd5sum, File::hash($actual));
-            $this->setTaskMessage("<info>Compile was successful and output is at {$actual}</info>");
+            File::ensureDirectoryExists(dirname($final));
+            File::move($initial, $final);
+            File::put($finalMd5sum, File::hash($final));
+            $release = $this->config('get', 'release');
+            $release['assets'] = [
+                ['name' => basename($final)],
+                ['name' => basename($finalMd5sum)],
+            ];
+            File::put($finalReleaseFile, json_encode($release, JSON_PRETTY_PRINT));
+            $this->setTaskMessage("<info>Release file created at {$finalReleaseFile}</info>");
+
+            $this->setTaskMessage("<info>Compile was successful and output is at {$final}</info>");
         } else {
             $this->setTaskMessage("<error>Failed to compile the application. Exit Code: {$process->exitCode()}</error>");
         }
@@ -470,189 +484,6 @@ class AppBuild extends TaskingCommand
         $this->backupsRestored = true;
 
         return $result;
-    }
-
-    protected function pharAddFromString(string $path, string $file, string $content): true|string
-    {
-        try {
-            (new \Phar($path))->addFromString($file, $content);
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
-        }
-
-        return true;
-    }
-
-    protected function checkDistributions(): ?bool
-    {
-        $distributions = $this->config('get', 'distributions', []);
-        if (count($distributions) == 0) {
-            $this->setTaskMessage('<comment>No distributions to check.</comment>');
-
-            return null;
-        }
-
-        $this->taskMessageTitle = ' | Distributions to be built:';
-        foreach (array_keys($distributions) as $key => $distribution) {
-            $order = $key + 1;
-            $this->setTaskMessage("<info>#{$order}: {$distribution}</info>");
-        }
-
-        return true;
-    }
-
-    protected function downloadSfx(): bool
-    {
-        $distributions = $this->config('get', 'distributions', []);
-
-        foreach ($distributions as $distribution) {
-            $sfx = $distribution['sfx'];
-            if ($sfx['localExists']) {
-                $this->setTaskMessage("<comment>{$distribution['target']} Sfx already exists locally at {$sfx['local']}</comment>");
-
-                continue;
-            } elseif ($sfx['downloadExists']) {
-                $this->setTaskMessage("<comment>{$distribution['target']} Sfx already downloaded at {$sfx['downloadPath']}</comment>");
-
-                continue;
-            }
-
-            File::ensureDirectoryExists(dirname($sfx['downloadPath']));
-            $this->indicator = new Progress(steps: 0);
-            $this->indicator = Helper::downloadProgress($this->indicator, $sfx['remote'], "for {$distribution['target']}");
-            $this->indicator->config('set', 'auto.finish', true);
-            $this->indicator->config('set', 'auto.clear', true);
-            $this->indicator->config('set', 'show.finish', 2);
-
-            $response = Http::sink($sfx['downloadPath'])->withOptions([
-                'progress' => function ($dlSize, $dlCompleted) {
-                    $this->indicator->progress($dlCompleted);
-                },
-                'on_headers' => function (ResponseInterface $response) {
-                    $this->indicator->total((int) $response->getHeaderLine('Content-Length'));
-                },
-            ])->get($sfx['remote']);
-
-            if ($response->successful()) {
-                $this->setTaskMessage("<info>{$distribution['target']} Sfx downloaded successfully to {$sfx['downloadPath']}</info>");
-            } else {
-                $this->setTaskMessage("<error>{$distribution['target']} Sfx download failed.</error>");
-            }
-        }
-
-        return true;
-    }
-
-    protected function extractSfx(): bool
-    {
-        $distributions = $this->config('get', 'distributions', []);
-
-        foreach ($distributions as $distribution) {
-            $sfx = $distribution['sfx'];
-
-            if ($sfx['localExists'] || ! $sfx['remoteArchive']) {
-                continue;
-            }
-
-            if (! File::exists($sfx['downloadPath'])) {
-                $this->setTaskMessage("<error>{$distribution['target']} Sfx archive does not exist at {$sfx['downloadPath']}</error>");
-
-                continue;
-            }
-
-            File::ensureDirectoryExists($sfx['extractDir']);
-
-            $result = false;
-            try {
-                Archive::extractTo($sfx['downloadPath'], $sfx['extractDir']);
-                $result = true;
-            } catch (\Throwable $exception) {
-                $this->setTaskMessage("<error>{$distribution['target']} Sfx archive could not be extracted from {$sfx['downloadPath']}</error>");
-                $this->setTaskMessage("<error>Exception Message: {$exception->getMessage()}</error>");
-            }
-
-            if (! $result) {
-                continue;
-            }
-
-            $extractedSfx = join_paths($sfx['extractDir'], $sfx['archiveFile']);
-
-            if (! File::exists($extractedSfx)) {
-                $this->setTaskMessage("<error>{$distribution['target']} Sfx archive could not be extracted from {$extractedSfx}</error>");
-            } else {
-                File::ensureDirectoryExists(dirname($sfx['local']));
-                File::move($extractedSfx, $sfx['local']);
-                $this->config('set', "distributions.{$distribution['target']}.sfx.localExists", true);
-                $this->setTaskMessage("<info>{$distribution['target']} Sfx archive extracted successfully to {$sfx['local']}</info>");
-            }
-        }
-
-        return true;
-    }
-
-    protected function buildBinaries(): bool
-    {
-        $distributions = $this->config('get', 'distributions');
-        $pharKey = $this->option('leave-initial') ? 'initial' : 'phar';
-        $phar = $this->config('get', $pharKey);
-        $spcBinary = $this->config('get', 'spc.binary');
-        $spcDefaults = [
-            'debug',
-            'no-interaction',
-        ];
-
-        foreach ($distributions as $distribution) {
-            $sfx = $distribution['sfx'];
-            $output = $distribution['output'];
-            $md5sum = $distribution['md5sum'];
-            $distPhar = "{$output}.phar";
-
-            if (! $sfx['localExists']) {
-                $this->setTaskMessage("<error>{$distribution['target']} Sfx does not exist at {$sfx['local']}</error>");
-
-                continue;
-            }
-
-            File::ensureDirectoryExists(dirname($output));
-
-            if (! File::copy($phar, $distPhar)) {
-                $this->setTaskMessage("<error>Phar {$phar} could not be copied to {$distPhar} for {$distribution['target']}</error>");
-
-                continue;
-            }
-
-            $buildContent = array_merge($this->config('get', 'json'), [
-                'os' => $distribution['os'],
-                'arch' => $distribution['arch'],
-                'dist' => "{$distribution['os']}-{$distribution['arch']}",
-            ]);
-            $buildContent = json_encode($buildContent);
-            $buildContentResult = $this->pharAddFromString($distPhar, 'build.json', $buildContent);
-            if ($buildContentResult !== true) {
-                $this->setTaskMessage("<error>Failed to add build.json to the phar file. Error: {$buildContentResult}</error>");
-            }
-
-            $spcArgs = array_merge($spcDefaults, ["with-micro={$sfx['local']}", "output={$output}"]);
-            $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], ($sfx['spcOptions'] ?? []), $spcArgs);
-            $process = Process::timeout($this->getTimeout())->run($spcCmd);
-
-            if ($process->successful()) {
-                if ($md5sum && (File::put("$output.md5sum", File::hash($output)) === false)) {
-                    $this->setTaskMessage("<error>Failed to write md5sum file for {$distribution['target']}</error>");
-                }
-                $this->setTaskMessage("<info>{$distribution['target']} built successfully at {$output}</info>");
-                if (! blank($chmod = config('dev.build.chmod')) && is_string($chmod) && is_numeric($chmod) && strlen($chmod) === 4) {
-                    File::chmod($output, octdec(config('dev.build.chmod')));
-                }
-            } else {
-                $this->setTaskMessage("<error>{$distribution['target']} build failed. Exit Code: {$process->exitCode()} - Output: {$process->errorOutput()}</error>");
-                if (File::exists($output)) {
-                    File::delete($output);
-                }
-            }
-        }
-
-        return true;
     }
 
     private function getTimeout(): ?int

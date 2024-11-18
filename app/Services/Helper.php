@@ -185,6 +185,14 @@ class Helper
         return static::fileStreamProgress($progress, $remote, $labelSuffix);
     }
 
+    public static function uploadProgress(
+        ProgressContract $progress,
+        string $remote,
+        string $labelSuffix
+    ): ProgressContract {
+        return static::fileStreamProgress($progress, $remote, $labelSuffix, '', false);
+    }
+
     public static function phpinfo(int $flags = INFO_ALL): string
     {
         ob_start();

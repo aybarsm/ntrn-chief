@@ -19,6 +19,7 @@ return Helper::isPhar() ? [] : [
     'build' => [
         'path' => joinBasePath('builds'),
         'infoFile' => joinBasePath('build.json'),
+        'releaseFile' => 'release.json',
         'phar' => str_replace(["'", '"'], '', Application::artisanBinary()).'.phar',
         'ts' => Helper::tsSafe(),
         'chmod' => '0755',
@@ -59,6 +60,7 @@ return Helper::isPhar() ? [] : [
                     'archive' => true,
                     'archiveFile' => 'micro.sfx',
                 ],
+                'sanityCheck' => 'docker run --rm -it --platform linux/amd64 -v "{{BASE_PATH}}/dev:/data/dev" -v "{{BINARY}}:/data/ntrn" -e NTRN_BASE="/data/dev" -w /data debian:bookworm-slim /usr/bin/bash -c "chmod +x /data/ntrn; /data/ntrn list"',
             ],
             [
                 'binary' => 'ntrn_linux-aarch64',
@@ -73,6 +75,7 @@ return Helper::isPhar() ? [] : [
                     'archive' => true,
                     'archiveFile' => 'micro.sfx',
                 ],
+                'sanityCheck' => 'docker run --rm -it -v "{{BASE_PATH}}/dev:/data/dev" -v "{{BINARY}}:/data/ntrn" -e NTRN_BASE="/data/dev" -w /data debian:bookworm /usr/bin/bash -c "chmod +x /data/ntrn; /data/ntrn list"',
             ],
             [
                 'binary' => 'ntrn_darwin-aarch64',
@@ -87,6 +90,7 @@ return Helper::isPhar() ? [] : [
                     'archive' => true,
                     'archiveFile' => 'micro.sfx',
                 ],
+                'sanityCheck' => '{{BINARY}} list',
             ],
             [
                 'binary' => 'ntrn_darwin-x86_64',
