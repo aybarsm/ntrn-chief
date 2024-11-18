@@ -19,7 +19,6 @@ return Helper::isPhar() ? [] : [
     'build' => [
         'path' => joinBasePath('builds'),
         'infoFile' => joinBasePath('build.json'),
-        'releaseFile' => 'release.json',
         'phar' => str_replace(["'", '"'], '', Application::artisanBinary()).'.phar',
         'ts' => Helper::tsSafe(),
         'chmod' => '0755',

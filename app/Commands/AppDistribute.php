@@ -331,7 +331,6 @@ class AppDistribute extends TaskingCommand
                 'label' => "md5sum:{$sfx['dist']}"
             ];
 
-//            $output = $this->prompt('flowingOutput', label: "Building Static Binary for {$sfx['dist']}", rows: 10);
             $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], [
                 'with-micro' => $sfx['local'],
                 'output' => $static,
@@ -339,15 +338,9 @@ class AppDistribute extends TaskingCommand
 
             $building = Process::timeout(60)->start($spcCmd);
 
-//            while ($building->running()) {
-//                $output->addOutput($building->latestOutput());
-//            }
-
             $process = $building->wait();
-//            $output->finish();
 
             if ($process->successful()) {
-//                $output->clear();
                 if (isset($sfx['chmod'])) {
                     File::chmod($static, octdec($sfx['chmod']));
                     $this->setTaskMessage("<info>Chmod set to {$sfx['chmod']} for {$sfx['dist']} at {$static}</info>");

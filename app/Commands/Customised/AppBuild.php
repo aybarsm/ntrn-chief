@@ -417,8 +417,8 @@ class AppBuild extends TaskingCommand
             File::put($finalMd5sum, File::hash($final));
             $release = $this->config('get', 'release');
             $release['assets'] = [
-                ['name' => basename($final)],
-                ['name' => basename($finalMd5sum)],
+                ['name' => basename($final), 'binary' => basename($final)],
+                ['name' => basename($finalMd5sum), 'binary' => basename($finalMd5sum)],
             ];
             File::put($finalReleaseFile, json_encode($release, JSON_PRETTY_PRINT));
             $this->setTaskMessage("<info>Release file created at {$finalReleaseFile}</info>");
