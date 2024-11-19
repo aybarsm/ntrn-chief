@@ -99,10 +99,6 @@ class AppRelease extends TaskingCommand
         $this->release = $this->getRelease($data['release']);
         $this->assets = $this->getAssets();
 
-//        foreach(File::files($data['build']['path']) as $file){
-//            dump($file->getFilenameWithoutExtension());
-//        }
-
         $statics = collect(config('dev.build.static', []));
         $files = collect(Arr::mapWithKeys(File::files($data['build']['path']), function ($file, $key) use ($data, $statics) {
             $isMd5 = $file->getExtension() === 'md5sum';
@@ -117,7 +113,6 @@ class AppRelease extends TaskingCommand
             return [
                 "file_{$key}" => [
                     'name' => $file->getFilename(),
-//                    'label' => ($static ? ("{$static['os']}_{$static['arch']}" . ($isMd5 ? ':md5sum' : '')) : ''),
                     'label' => $label,
                     'prompt' => $file->getFilename() . ($uploaded ? ' (Exists - Overwritten if selected)' : ''),
                     'path' => $file->getPathname(),
@@ -129,8 +124,6 @@ class AppRelease extends TaskingCommand
         }))
             ->sortBy('name')
             ->sortBy(fn ($file) => $file['default'] ? 0 : 1);
-
-//        dump($files->mapWithKeys(fn ($file, $key) => [$key => $file['prompt']])->toArray());
 
         $this->prompts['files'] = $this->prompt('multiselect',
             label: 'Select Assets to Release',
@@ -144,6 +137,8 @@ class AppRelease extends TaskingCommand
         $data['files'] = $files->filter(fn ($file, $key) => in_array($key, $uploads))->values()->toArray();
 
         $this->configables = $data;
+        dump($this->configables);
+        exit();
 
         return true;
     }
