@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Traits\Command;
+namespace App\Traits\Commands;
 
 use Illuminate\Support\Str;
 

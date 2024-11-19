@@ -40,7 +40,7 @@ class StrMixin
 
     public static function matchesReplace(): \Closure
     {
-        return function (string $pattern, array $segments): string {
+        return function (string $pattern, array $segments, bool $trimBoundaries = true, bool $returnInstance = false): string {
             $cleaned = preg_replace('/\\\\/', '', trim($pattern, '/'));
             $split = mb_str_split($cleaned);
             [$found, $search, $replace] = [[], [], []];
@@ -79,7 +79,10 @@ class StrMixin
                 }
             }
 
-            return static::replace($search, $replace, $cleaned);
+            return static::of($cleaned)
+                ->replace($search, $replace)
+                ->when($trimBoundaries, fn ($str) => $str->chopStart('^')->chopEnd('$'))
+                ->unless($returnInstance, fn ($str) => $str->value());
         };
     }
 }

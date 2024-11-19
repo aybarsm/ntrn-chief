@@ -21,6 +21,7 @@ return Helper::isPhar() ? [] : [
         'infoFile' => joinBasePath('build.json'),
         'phar' => str_replace(["'", '"'], '', Application::artisanBinary()).'.phar',
         'ts' => Helper::tsSafe(),
+        'id_pattern' => '/^(?P<appVer>v(\d+)\.(\d+)\.(\d+))-(?P<tsSafe>(\d{4})(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3])([0-5][0-9])([0-5][0-9])Z)$/',
         'chmod' => '0755',
         'box' => [
             'working-dir' => base_path(),
