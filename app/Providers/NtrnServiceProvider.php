@@ -7,12 +7,14 @@ use App\Actions\AppUpdateGitHubRelease;
 use App\Contracts\Actions\AppUpdateDirectContract;
 use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Traits\Configable;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 
 class NtrnServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,19 @@ class NtrnServiceProvider extends ServiceProvider
     {
         //        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
         //        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
+        $this->app->bind(
+            'git.branch',
+            function (Application $app) {
+                $process = Process::fromShellCommandline(
+                    'git symbolic-ref --short HEAD',
+                    $app->basePath()
+                );
+
+                $process->run();
+
+                return trim($process->getOutput());
+            }
+        );
         App::booted(function () {
             static::initPromptTheme();
             static::initValidatorExtensions();

@@ -259,20 +259,6 @@ class AppBuild extends TaskingCommand
             'id' => $config['id'],
         ];
 
-        $config['release'] = [
-            'release_id' => null,
-            'github' => [
-                'tag_name' => $config['version'],
-                'target_commitish' => $this->config('get', 'git.branch'),
-                'name' => $config['version'],
-                'body' => $config['id'],
-                'draft' => false,
-                'prerelease' => false,
-                'generate_release_notes' => false,
-            ],
-            'assets' => [],
-        ];
-
         if (! blank($config['exclude'] ?? []) && isset($config['backup']['path']) && isset($config['backup']['historyFile'])) {
             if (! File::exists($config['backup']['historyFile'])) {
                 File::ensureDirectoryExists(dirname($config['backup']['historyFile']));
@@ -383,7 +369,7 @@ class AppBuild extends TaskingCommand
         $initial = $this->config('get', 'output.initial');
         $final = $this->config('get', 'output.final');
         $finalMd5sum = "{$final}.md5sum";
-        $finalReleaseFile = join_paths(dirname($final), $this->config('get', 'releaseFile'));
+
         $boxBinary = $this->config('get', 'box.binary');
         $boxDefaults = [
             'working-dir' => $this->config('get', 'box.working-dir'),
@@ -415,13 +401,6 @@ class AppBuild extends TaskingCommand
             File::ensureDirectoryExists(dirname($final));
             File::move($initial, $final);
             File::put($finalMd5sum, File::hash($final));
-            $release = $this->config('get', 'release');
-            $release['assets'] = [
-                ['name' => basename($final), 'binary' => basename($final)],
-                ['name' => basename($finalMd5sum), 'binary' => basename($finalMd5sum)],
-            ];
-            File::put($finalReleaseFile, json_encode($release, JSON_PRETTY_PRINT));
-            $this->setTaskMessage("<info>Release file created at {$finalReleaseFile}</info>");
 
             $this->setTaskMessage("<info>Compile was successful and output is at {$final}</info>");
         } else {

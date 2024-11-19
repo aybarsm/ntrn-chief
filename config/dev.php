@@ -52,7 +52,6 @@ return Helper::isPhar() ? [] : [
                 'arch' => 'x86_64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-x86_64.sfx'),
                 'chmod' => '0755',
-                'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-linux-x86_64.tar.gz',
                     'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-x86_64.tar.gz'),
@@ -67,7 +66,6 @@ return Helper::isPhar() ? [] : [
                 'arch' => 'aarch64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-aarch64.sfx'),
                 'chmod' => '0755',
-                'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-linux-aarch64.tar.gz',
                     'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-linux-aarch64.tar.gz'),
@@ -82,7 +80,6 @@ return Helper::isPhar() ? [] : [
                 'arch' => 'aarch64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-aarch64.sfx'),
                 'chmod' => '0755',
-                'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-macos-aarch64.tar.gz',
                     'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-aarch64.tar.gz'),
@@ -97,7 +94,6 @@ return Helper::isPhar() ? [] : [
                 'arch' => 'x86_64',
                 'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-x86_64.sfx'),
                 'chmod' => '0755',
-                'md5sum' => true,
                 'remote' => [
                     'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.13-micro-macos-x86_64.tar.gz',
                     'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.13-micro-macos-x86_64.tar.gz'),

@@ -87,7 +87,6 @@ class AppDistribute extends TaskingCommand
             'static.*.arch' => 'required|string|in:x86_64,aarch64',
             'static.*.local' => 'required|string',
             'static.*.chmod' => 'string|numeric',
-            'static.*.md5sum' => 'required|boolean',
             'static.*.remote' => 'bail|array',
             'static.*.remote.url' => 'string|url',
             'static.*.remote.saveAs' => 'string',
@@ -138,10 +137,6 @@ class AppDistribute extends TaskingCommand
                 'file' => null,
                 'data' => null,
             ],
-            'release' => [
-                'file' => null,
-                'data' => null,
-            ],
         ];
         $this->prompts['phar'] = $this->prompt('select',
             label: 'Select Build to Distribute',
@@ -153,18 +148,12 @@ class AppDistribute extends TaskingCommand
                     return "Build information file does not exist at {$info['build']['file']}";
                 }
 
-                $info['release']['file'] = join_paths(dirname($value), 'release.json');
-                if (! File::exists($info['release']['file'])) {
-                    return "Release information file does not exist at {$info['release']['file']}";
-                }
-
                 return null;
             },
         );
 
         $this->configables['phar'] = $this->prompts['phar']->prompt();
         $info['build']['data'] = File::json($info['build']['file']);
-        $info['release']['data'] = File::json($info['release']['file']);
         $this->configables['info'] = $info;
 
         $dists = $this->config('get', 'dists', []);
@@ -280,9 +269,6 @@ class AppDistribute extends TaskingCommand
             'no-interaction',
         ];
 
-        $releaseFile = $this->config('get', 'info.release.file');
-        $release = $this->config('get', 'info.release.data');
-
         foreach ($statics as $dist => $sfx) {
             if (! $sfx['localExists']) {
                 $this->setTaskMessage("<error>{$sfx['dist']} Sfx does not exist at {$sfx['local']}</error>");
@@ -291,7 +277,6 @@ class AppDistribute extends TaskingCommand
             }
 
             $static = join_paths(dirname($basePhar), $sfx['binary']);
-            $genMd5sum = Arr::has($sfx, 'md5sum') && $sfx['md5sum'] === true;
             $staticMd5sum = "{$static}.md5sum";
             $distPhar = "{$static}.phar";
             foreach ([$static, $staticMd5sum, $distPhar] as $file) {
@@ -320,17 +305,6 @@ class AppDistribute extends TaskingCommand
                 continue;
             }
 
-            $assetStatic = [
-                'name' => basename($static),
-                'binary' => basename($static),
-                'label' => $sfx['dist']
-            ];
-            $assetMd5 = [
-                'name' => basename($staticMd5sum),
-                'binary' => basename($staticMd5sum),
-                'label' => "md5sum:{$sfx['dist']}"
-            ];
-
             $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], [
                 'with-micro' => $sfx['local'],
                 'output' => $static,
@@ -341,29 +315,17 @@ class AppDistribute extends TaskingCommand
             $process = $building->wait();
 
             if ($process->successful()) {
+                if (File::exists($distPhar)) {
+                    File::delete($distPhar);
+                }
+
                 if (isset($sfx['chmod'])) {
                     File::chmod($static, octdec($sfx['chmod']));
                     $this->setTaskMessage("<info>Chmod set to {$sfx['chmod']} for {$sfx['dist']} at {$static}</info>");
                 }
 
-                if ($genMd5sum) {
-                    File::put($staticMd5sum, File::hash($static));
-                    $this->setTaskMessage("<info>MD5Sum created for {$sfx['dist']} is at {$staticMd5sum}</info>");
-                }
-
-                $release['assets'] = collect($release['assets'])
-                ->when(
-                    fn (Collection $assets) => $assets->search(fn ($asset) => $asset['name'] === $assetStatic['name']),
-                    fn (Collection $assets, int $key) => $assets->put($key, array_merge($assets->get($key), $assetStatic)),
-                    fn (Collection $assets) => $assets->push($assetStatic)
-                )->when(
-                    fn (Collection $assets) => $assets->search(fn ($asset) => $asset['name'] === $assetMd5['name']),
-                    fn (Collection $assets, int $key) => ($genMd5sum ? $assets->put($key, array_merge($assets->get($key), $assetMd5)) : $assets->forget($key)),
-                    fn (Collection $assets) => ($genMd5sum ? $assets->push($assetMd5) : $assets)
-                )->toArray();
-
-                File::put($releaseFile, json_encode($release, JSON_PRETTY_PRINT));
-                $this->setTaskMessage("<info>Release information updated for {$sfx['dist']} at {$releaseFile}</info>");
+                File::put($staticMd5sum, File::hash($static));
+                $this->setTaskMessage("<info>MD5Sum created for {$sfx['dist']} is at {$staticMd5sum}</info>");
 
                 if (isset($sfx['sanityCheck'])) {
                     $sanityCmd = Str::replace(['{{BINARY}}', '{{BASE_PATH}}'], [$static, base_path()], $sfx['sanityCheck']);
