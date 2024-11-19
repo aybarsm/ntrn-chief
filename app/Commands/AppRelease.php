@@ -98,10 +98,52 @@ class AppRelease extends TaskingCommand
 
         $this->release = $this->getRelease($data['release']);
         $this->assets = $this->getAssets();
-        dump($this->release);
-        dump($this->assets);
 
-        exit();
+//        foreach(File::files($data['build']['path']) as $file){
+//            dump($file->getFilenameWithoutExtension());
+//        }
+
+        $statics = collect(config('dev.build.static', []));
+        $files = collect(Arr::mapWithKeys(File::files($data['build']['path']), function ($file, $key) use ($data, $statics) {
+            $isMd5 = $file->getExtension() === 'md5sum';
+            $static = $statics->firstWhere('binary', $file->getFilenameWithoutExtension());
+            $uploaded = $this->assets->contains('name', $file->getFilename());
+            $isDefault = $static !== null || in_array($file->getPathname(), [$data['phar']['path'], $data['phar']['md5']]);
+            $label = match(true) {
+                $isMd5 => "md5sum:{$file->getFilenameWithoutExtension()}",
+                $static !== null => "dist:{$static['os']}_{$static['arch']}",
+                default => ''
+            };
+            return [
+                "file_{$key}" => [
+                    'name' => $file->getFilename(),
+//                    'label' => ($static ? ("{$static['os']}_{$static['arch']}" . ($isMd5 ? ':md5sum' : '')) : ''),
+                    'label' => $label,
+                    'prompt' => $file->getFilename() . ($uploaded ? ' (Exists - Overwritten if selected)' : ''),
+                    'path' => $file->getPathname(),
+                    'default' => $isDefault,
+                    'uploaded' => $uploaded,
+                    'selected' => $isDefault && ! $uploaded,
+                ]
+            ];
+        }))
+            ->sortBy('name')
+            ->sortBy(fn ($file) => $file['default'] ? 0 : 1);
+
+//        dump($files->mapWithKeys(fn ($file, $key) => [$key => $file['prompt']])->toArray());
+
+        $this->prompts['files'] = $this->prompt('multiselect',
+            label: 'Select Assets to Release',
+            options: $files->mapWithKeys(fn ($file, $key) => [$key => $file['prompt']])->toArray(),
+            required: true,
+            scroll: count($files),
+            default: $files->filter(fn ($file) => $file['selected'])->keys()->toArray(),
+        );
+
+        $uploads = $this->prompts['files']->prompt();
+        $data['files'] = $files->filter(fn ($file, $key) => in_array($key, $uploads))->values()->toArray();
+
+        $this->configables = $data;
 
         return true;
     }

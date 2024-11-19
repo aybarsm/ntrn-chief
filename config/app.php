@@ -35,8 +35,8 @@ return [
                     'token' => env('APP_UPDATE_STRATEGY_GITHUB_RELEASE_TOKEN'),
                     // Asset search: assoc json array string, multiple values will be operated as AND
                     // Empty keys and values will be ignored
-                    // (i.e. {"label": "linux-x86_64"}) => label == "linux-x86_64"
-                    // (i.e. {"label": "linux-x86_64", "name": "ntrn_linux-x86_64"}) => label == "linux-x86_64" AND name == "ntrn_linux-x86_64"
+                    // (i.e. {"label": "dist:linux-x86_64"}) => label == "linux-x86_64"
+                    // (i.e. {"label": "dist:linux-x86_64", "name": "ntrn_linux-x86_64"}) => label == "linux-x86_64" AND name == "ntrn_linux-x86_64"
                     'asset' => Helper::jsonDecode(env('APP_UPDATE_STRATEGY_GITHUB_RELEASE_ASSET'), []),
                 ],
             ],
