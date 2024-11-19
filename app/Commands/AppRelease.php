@@ -7,7 +7,6 @@ namespace App\Commands;
 use App\Attributes\Console\CommandTask;
 use App\Framework\Commands\TaskingCommand;
 use App\Services\GitHub\Contracts\GitHubContract;
-use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -45,7 +44,7 @@ class AppRelease extends TaskingCommand
     protected function setReleaseAndAssets(): void
     {
         $this->releases = $this->client->get('releases')->collect();
-
+        
         $release = $this->config('get', 'info.release');
         if ($this->releases->contains('tag_name', $release['tag_name'])) {
             $this->release = $this->releases->firstWhere('tag_name', $release['tag_name']);
