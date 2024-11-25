@@ -47,3 +47,17 @@ if (! function_exists('config_value')) {
         return value(config($key, $default));
     }
 }
+
+if (! function_exists('truthy')) {
+    function truthy(mixed $value): bool
+    {
+        return in_array($value, ['yes', 'on', '1', 1, true, 'true'], true);
+    }
+}
+
+if (! function_exists('falsy')) {
+    function falsy(mixed $value): bool
+    {
+        return in_array($value, ['no', 'off', '0', 0, false, 'false'], true);
+    }
+}

@@ -14,13 +14,13 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
     public static PendingRequest $updateClient;
 
     public function __construct(
-        #[Config('app.update.strategies.github.release.owner')] string $updateOwner,
-        #[Config('app.update.strategies.github.release.repo')] string $updateRepo,
+        #[Config('app.update.strategies.github.release.owner')] protected string $updateOwner,
+        #[Config('app.update.strategies.github.release.repo')] protected string $updateRepo,
         #[Config('app.update.strategies.github.release.token')] ?string $updateToken,
         #[Config('app.update.http.timeout')] int $updateHttpTimeout,
         #[Config('app.update.http.headers')] array $updateHttpHeaders,
-        #[Config('dev.github.owner')] ?string $devOwner,
-        #[Config('dev.github.repo')] ?string $devRepo,
+        #[Config('dev.github.owner')] protected ?string $devOwner,
+        #[Config('dev.github.repo')] protected ?string $devRepo,
         #[Config('dev.github.token')] ?string $devToken,
         #[Config('dev.github.http.timeout')] ?int $devHttpTimeout,
         #[Config('dev.github.http.headers')] ?array $devHttpHeaders,
@@ -30,7 +30,6 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
 
         if (! Helper::isPhar() && ! blank($devOwner) && ! blank($devRepo) && ! blank($devToken)) {
             static::$devClient = $client;
-            static::$devClient->baseUrl("https://api.github.com/repos/{$devOwner}/{$devRepo}");
             static::$devClient->withToken($devToken);
             static::$devClient->timeout($devHttpTimeout);
             if (! blank($devHttpHeaders)) {
@@ -51,9 +50,12 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
         }
     }
 
-    public function getDevClient(): ?PendingRequest
+    public function getDevClient(bool $uploads = false): ?PendingRequest
     {
-        return static::$devClient;
+        $addr = $uploads ? 'uploads' : 'api';
+        return static::$devClient
+            ->baseUrl("https://{$addr}.github.com/repos/{$this->devOwner}/{$this->devRepo}")
+            ->when($uploads, fn($client) => $client->contentType('application/octet-stream'));
     }
 
     public function getUpdateClient(): ?PendingRequest

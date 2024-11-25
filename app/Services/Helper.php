@@ -28,6 +28,25 @@ class Helper
         'tx' => ['upload', 'uploading'],
     ];
 
+    public static function pattern(string $pattern): string
+    {
+        return Str::of($pattern)->when(
+            fn ($str) => $str->isNotEmpty(),
+            fn ($str) => $str->trim()->start('/')->finish('/')
+        )->value();
+    }
+
+    public static function getCwd($cwd): string
+    {
+        $target = match(true){
+            $cwd === '.' || $cwd === './' => getcwd(),
+            Str::startsWith($cwd, './') => getcwd() . '/' . Str::after($cwd, './'),
+            default => $cwd
+        };
+
+        return rtrim($target, '/');
+    }
+
     public static function resolveVersion(string $verInfo, string $pattern, mixed $default = null, bool $segments = false): mixed
     {
         $req = ['major', 'minor', 'patch'];

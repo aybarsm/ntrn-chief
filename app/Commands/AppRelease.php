@@ -7,6 +7,7 @@ namespace App\Commands;
 use App\Attributes\Console\CommandTask;
 use App\Framework\Commands\TaskingCommand;
 use App\Services\GitHub\Contracts\GitHubContract;
+use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -25,8 +26,7 @@ class AppRelease extends TaskingCommand
 {
     use Configable;
 
-    protected $signature = 'app:release
-    {--force: Force (overwrite assets) release}';
+    protected $signature = 'app:release';
 
     protected $description = 'Release the built application';
 
@@ -100,10 +100,11 @@ class AppRelease extends TaskingCommand
         $this->assets = $this->getAssets();
 
         $statics = collect(config('dev.build.static', []));
-        $files = collect(Arr::mapWithKeys(File::files($data['build']['path']), function ($file, $key) use ($data, $statics) {
+        $data['files'] = collect(Arr::mapWithKeys(File::files($data['build']['path']), function ($file, $key) use ($data, $statics) {
             $isMd5 = $file->getExtension() === 'md5sum';
             $static = $statics->firstWhere('binary', $file->getFilenameWithoutExtension());
-            $uploaded = $this->assets->contains('name', $file->getFilename());
+            $assetId = $this->assets->firstWhere('name', $file->getFilename())?->get('id');
+            $uploaded = $assetId !== null;
             $isDefault = $static !== null || in_array($file->getPathname(), [$data['phar']['path'], $data['phar']['md5']]);
             $label = match(true) {
                 $isMd5 => "md5sum:{$file->getFilenameWithoutExtension()}",
@@ -119,26 +120,30 @@ class AppRelease extends TaskingCommand
                     'default' => $isDefault,
                     'uploaded' => $uploaded,
                     'selected' => $isDefault && ! $uploaded,
+                    'asset_id' => $assetId,
                 ]
             ];
         }))
             ->sortBy('name')
             ->sortBy(fn ($file) => $file['default'] ? 0 : 1);
 
+        dump($data['files']);
+        exit();
+
         $this->prompts['files'] = $this->prompt('multiselect',
             label: 'Select Assets to Release',
-            options: $files->mapWithKeys(fn ($file, $key) => [$key => $file['prompt']])->toArray(),
+            options: $data['files']->mapWithKeys(fn ($file, $key) => [$key => $file['prompt']])->toArray(),
             required: true,
-            scroll: count($files),
-            default: $files->filter(fn ($file) => $file['selected'])->keys()->toArray(),
+            scroll: $data['files']->count(),
+            default: $data['files']->filter(fn ($file) => $file['selected'])->keys()->toArray(),
         );
 
-        $uploads = $this->prompts['files']->prompt();
-        $data['files'] = $files->filter(fn ($file, $key) => in_array($key, $uploads))->values()->toArray();
+        $selected = $this->prompts['files']->prompt();
+        $data['uploads'] = $data['files']
+            ->filter(fn ($file, $key) => in_array($key, $selected))->values()
+            ->toArray();
 
         $this->configables = $data;
-        dump($this->configables);
-        exit();
 
         return true;
     }
@@ -180,184 +185,54 @@ class AppRelease extends TaskingCommand
         }
     }
 
-//    protected function setRelease(): void
-//    {
-//
-//    }
+    protected function uploadAssets(): bool
+    {
+        $files = $this->config('get', 'uploads');
+//        $uploader = $this->client->attach()
 
-//    protected function setReleaseAndAssets(): void
-//    {
-//        $this->releases = $this->client->get('releases')->collect();
-//
-//        $release = $this->config('get', 'info.release');
-//        if ($this->releases->contains('tag_name', $release['tag_name'])) {
-//            $this->release = $this->releases->firstWhere('tag_name', $release['tag_name']);
-//        }else {
-//            $this->release = $this->client
-//                ->throw(fn (Response $response) => $response->status() !== 201)
-//                ->post('releases', $release)
-//                ->json();
-//            $this->setTaskMessage("Release [{$this->release['id']}] created.");
-//        }
-//
-//        if (! isset($this->release['assets'])) {
-//            $this->assets = $this->client->get("releases/{$this->release['id']}/assets")->collect();
-//        }else {
-//            $this->assets = collect($this->release['assets']);
-//        }
-//
-//        $this->hashes = collect();
-//        $assetClient = $this->client;
-//        $assetClient->replaceHeaders(['Accept' => 'application/octet-stream'])
-//            ->throw(fn (Response $response) => $response->status() !== 200);
-//
-//        foreach($this->assets as $asset){
-//            if (Str::endsWith($asset['name'], '.md5sum')) {
-//                $this->hashes->push([
-//                    'name' => Str::before($asset['name'], '.md5sum'),
-//                    'md5sum' => $assetClient->get("releases/assets/{$asset['id']}")->body(),
-//                ]);
-//            }
-//        }
-//    }
-
-//    protected function selectOptions(): bool
-//    {
-//        $builds = $this->config('get', 'builds', []);
-//
-//        [$build, $phar] = [[], []];
-//
-//
-//
-//        $build['path'] = $this->prompts['build']->prompt();
-//        $build['data'] = File::json($build['path']);
-//
-//        throw_if(
-//            $this->tags->where('name', $info['build']['data']['version'])->isEmpty(),
-//            "Tag [{$info['build']['data']['version']}] not found in repository"
-//        );
-//
-//        $info['release'] = [
-//            'tag_name' => $info['build']['data']['version'],
-//            'target_commitish' => app('git.branch'),
-//            'name' => $info['build']['data']['version'],
-//            'body' =>$info['build']['data']['id'],
-//            'draft' => true,
-//            'prerelease' => false,
-//            'generate_release_notes' => false,
-//        ];
-//        $this->configables['info'] = $info;
-//
-//        $this->setReleaseAndAssets();
-//
-//        $statics = collect(config('dev.build.static', []));
-//        $files = Arr::mapWithKeys(File::files($this->configables['build']), function ($file) use ($buildPath, $statics) {
-//
-//        });
-//            ->map(function ($item) {
-//                return $item->getFilename();
-//            })->filter(function ($item) {
-//                return ! Str::endsWith($item, '.md5sum');
-//            })->values()->toArray();
-//
-//        $defaults = collect();
-//        Arr::map(array_merge([['binary' => basename($info['phar'])]], $statics), callback: function ($item) use (&$defaults, $buildPath) {
-//            $label = Arr::has($item, ['os', 'arch']) ? "{$item['os']}_{$item['arch']}" : '';
-//            $defaults->push([
-//                'name' => $item['binary'],
-//                'label' => $label,
-//                'path' => join_paths($buildPath, $item['binary']),
-//            ]);
-//            $defaults->push([
-//                'name' => "{$item['binary']}.md5sum",
-//                'label' => blank($label) ? '' : "md5sum:{$label}",
-//                'path' => join_paths($buildPath, $item['binary']),
-//            ]);
-//        });
-//
-//
-//
-//        $this->prompts['files'] = $this->prompt('multiselect',
-//            label: 'Select Assets to Release',
-//            options: $files,
-//            required: true,
-//            scroll: count($files),
-//            default: $defaults->pluck('name')->toArray(),
-//            transform: function ($values){
-//                dump($values);
-//                return $values;
-//            }
-////            transform: fn ($items) => Arr::map($items, fn ($item) => $defaults->firstWhere('name', $item) ?? ['name' => $item]),
-//        );
-//
-//        $this->configables['files'] = $this->prompts['files']->prompt();
-//
-////        dump($this->prompts['files']->value());
-//        exit();
-//
-//
-//
-//
-//        return true;
-//    }
-//
-//    protected function uploadAssets(): bool
-//    {
-//        $files = collect($this->config('get', 'files', []))
-//            ->sortBy('name')
-//            ->sortBy(fn ($item) => Str::endsWith($item['name'], '.md5sum') ? 1 : 0)
-//            ->toArray();
-//
-//        foreach($files as $file){
+        foreach($files as $file){
+            if ($file['uploaded']) {
+                $response = $this->client->delete("releases/assets/{$file['name']}");
+            }
 //            $progress = $this->prompt('progress', steps: 0);
 //            $progress = Helper::uploadProgress($progress, $sfx['remote']['url'], "for {$sfx['dist']}");
 //            $progress->config('set', 'auto.finish', true);
 //            $progress->config('set', 'auto.clear', true);
 //            $progress->config('set', 'show.finish', 2);
+//            $response = $this->client->withOptions([
+//                'progress' => function ($dlSize, $dlCompleted) use ($progress) {
+//                    $progress->progress($dlCompleted);
+//                },
+//                'on_headers' => function (ResponseInterface $response) use ($progress) {
+//                    $progress->total((int) $response->getHeaderLine('Content-Length'));
+//                },
+//            ])->get($sfx['remote']['url']);
+        }
+
+
+
+
+
+        dump($files);
+
+
+
+//        dump($this->assets);
+//        dump($this->releases);
+//        dump($this->release);
+//        dump($releases->json());
+        exit();
+//        $assets = $this->config('get', 'assets');
 //
-//            $asset = $this->assets->firstWhere('name', $file['name']);
-//            if (! $asset) {
-//
-//            }
-//            else {
-//                $hash = $this->hashes->firstWhere('name', $file['name']);
-//                if ($hash && $hash['md5sum'] !== md5_file($file['path'])) {
-//                    dump("Uploading {$file['name']}");
-//                }
+//        foreach($assets as $asset){
+//            if ($this->assets->firstWhere('name', $asset['name'])->isEmpty()) {
+//                $this->client->post("releases/{$this->release['id']}/assets", [
+//                    'name' => $asset['name'],
+//                    'label' => $asset['label'],
+//                    'data' => File::get($asset['path']),
+//                ]);
 //            }
 //        }
-//
-//
-//
-//        $response = Http::sink($sfx['remote']['saveAs'])->withOptions([
-//            'progress' => function ($dlSize, $dlCompleted) use ($progress) {
-//                $progress->progress($dlCompleted);
-//            },
-//            'on_headers' => function (ResponseInterface $response) use ($progress) {
-//                $progress->total((int) $response->getHeaderLine('Content-Length'));
-//            },
-//        ])->get($sfx['remote']['url']);
-//
-//        dump($files);
-//
-//
-//
-////        dump($this->assets);
-////        dump($this->releases);
-////        dump($this->release);
-////        dump($releases->json());
-//        exit();
-////        $assets = $this->config('get', 'assets');
-////
-////        foreach($assets as $asset){
-////            if ($this->assets->firstWhere('name', $asset['name'])->isEmpty()) {
-////                $this->client->post("releases/{$this->release['id']}/assets", [
-////                    'name' => $asset['name'],
-////                    'label' => $asset['label'],
-////                    'data' => File::get($asset['path']),
-////                ]);
-////            }
-////        }
-//        return true;
-//    }
+        return true;
+    }
 }
