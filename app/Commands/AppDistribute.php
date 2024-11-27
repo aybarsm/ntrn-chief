@@ -10,7 +10,6 @@ use App\Services\Archive;
 use App\Services\Helper;
 use App\Traits\Configable;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -75,6 +74,7 @@ class AppDistribute extends TaskingCommand
             'builds' => 'array|min:1',
             'spc' => 'array|required',
             'spc.local' => 'bail|required|string|file_exists',
+            'spc.args' => 'array',
             'spc.chmod' => 'required|string|numeric',
             'spc.remote' => 'array',
             'spc.remote.url' => 'string|url',
@@ -86,6 +86,7 @@ class AppDistribute extends TaskingCommand
             'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
             'static.*.arch' => 'required|string|in:x86_64,aarch64',
             'static.*.local' => 'required|string',
+            'static.*.args' => 'array',
             'static.*.chmod' => 'string|numeric',
             'static.*.remote' => 'bail|array',
             'static.*.remote.url' => 'string|url',
@@ -264,10 +265,7 @@ class AppDistribute extends TaskingCommand
         $spcBinary = $this->config('get', 'spc.local');
         $spcChmod = $this->config('get', 'spc.chmod');
         File::chmod($spcBinary, octdec($spcChmod));
-        $spcDefaults = [
-            'debug',
-            'no-interaction',
-        ];
+        $spcDefaults = $this->config('get', 'spc.args', []);
 
         foreach ($statics as $dist => $sfx) {
             if (! $sfx['localExists']) {

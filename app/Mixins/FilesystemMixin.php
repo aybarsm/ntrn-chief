@@ -6,6 +6,7 @@ use App\Framework\Component\Finder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Ramsey\Collection\Sort;
+
 use function Illuminate\Filesystem\join_paths;
 
 /** @mixin \Illuminate\Filesystem\Filesystem */
@@ -27,9 +28,8 @@ class FilesystemMixin
             bool $values = true,
             bool $asArray = true,
             bool $negateMatch = false
-        ): array|Collection
-        {
-            $entries = match(true) {
+        ): array|Collection {
+            $entries = match (true) {
                 $dirs && $recursive => $this->allDirectories($path),
                 $dirs => $this->directories($path),
                 $recursive => $this->allFiles($path, $hidden),
@@ -60,16 +60,14 @@ class FilesystemMixin
             bool $returnFullPath = true,
             bool $values = true,
             bool $asArray = true
-        ): array|Collection
-        {
+        ): array|Collection {
             return static::matching($path, $pattern, $dirs, $recursive, $hidden, $basename, $sort, $returnFullPath, $values, $asArray, true);
         };
     }
 
     public static function allDirectories(): \Closure
     {
-        return function ($directory): array
-        {
+        return function ($directory): array {
             $directories = [];
 
             foreach (Finder::create()->in($directory)->directories()->sortByName() as $dir) {
@@ -82,17 +80,16 @@ class FilesystemMixin
 
     public static function finder(): \Closure
     {
-        return function (?string $in = null): Finder
-        {
+        return function (?string $in = null): Finder {
             $finder = Finder::create();
+
             return blank($in) ? $finder : $finder->in($in);
         };
     }
 
     public static function in(): \Closure
     {
-        return function (string $in): Finder
-        {
+        return function (string $in): Finder {
             return static::finder($in);
         };
     }

@@ -38,9 +38,9 @@ class Helper
 
     public static function getCwd($cwd): string
     {
-        $target = match(true){
+        $target = match (true) {
             $cwd === '.' || $cwd === './' => getcwd(),
-            Str::startsWith($cwd, './') => getcwd() . '/' . Str::after($cwd, './'),
+            Str::startsWith($cwd, './') => getcwd().'/'.Str::after($cwd, './'),
             default => $cwd
         };
 

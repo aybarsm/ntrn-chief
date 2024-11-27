@@ -91,4 +91,21 @@ class Command extends LaravelZeroCommand
 
         return parent::execute($input, $output);
     }
+
+    public function title(string $title, int $pad = 5): static
+    {
+        $title = Str::of($title)->trim()->when(
+            $pad > 0,
+            fn ($title) => $title->padBoth($title->length() + ($pad * 2))
+        )->value();
+        $spaces = str_repeat(' ', strlen($title));
+
+        $this->newLine();
+        $this->line("<bg=blue;fg=white>$spaces</>");
+        $this->line("<bg=blue;fg=white>$title</>");
+        $this->line("<bg=blue;fg=white>$spaces</>");
+        $this->newLine();
+
+        return $this;
+    }
 }

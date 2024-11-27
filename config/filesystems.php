@@ -15,10 +15,10 @@ return [
     'standard' => [
         'names' => [
             'expected' => env('FS_STANDARD_NAMES_EXPECTED', '/^[\w\-\.]+$/'),
-//            'search' => Helper::jsonDecode(env('FS_STANDARD_NAMES_SEARCH'), ['/\s+/', '/\[(.*?)\]|\((.*?)\)|\{(.*?)\}/', '/(\[|\(\{)(.*?)(\]|\)\})/', '/\s/']),
-//            'replace' => Helper::jsonDecode(env('FS_STANDARD_NAMES_REPLACE'), [' ', '-$1$2$3', '-$1', '_']),
-//            'search' => Helper::jsonDecode(env('FS_STANDARD_NAMES_SEARCH'), ['/\s+/', '/[\[|\(|\{](.*?)[\]|\)|\}]/', '/\s/']),
-//            'replace' => Helper::jsonDecode(env('FS_STANDARD_NAMES_REPLACE'), [' ', '-$1', '_']),
+            //            'search' => Helper::jsonDecode(env('FS_STANDARD_NAMES_SEARCH'), ['/\s+/', '/\[(.*?)\]|\((.*?)\)|\{(.*?)\}/', '/(\[|\(\{)(.*?)(\]|\)\})/', '/\s/']),
+            //            'replace' => Helper::jsonDecode(env('FS_STANDARD_NAMES_REPLACE'), [' ', '-$1$2$3', '-$1', '_']),
+            //            'search' => Helper::jsonDecode(env('FS_STANDARD_NAMES_SEARCH'), ['/\s+/', '/[\[|\(|\{](.*?)[\]|\)|\}]/', '/\s/']),
+            //            'replace' => Helper::jsonDecode(env('FS_STANDARD_NAMES_REPLACE'), [' ', '-$1', '_']),
             'search' => Helper::jsonDecode(env('FS_STANDARD_NAMES_SEARCH'), ['/\s+/', '/\[|\(|\{/', '/\]|\)|\}/', '/\s/']),
             'replace' => Helper::jsonDecode(env('FS_STANDARD_NAMES_REPLACE'), [' ', '-', '', '_']),
             'remainder' => env('FS_STANDARD_NAMES_REMAINDER', '_'),

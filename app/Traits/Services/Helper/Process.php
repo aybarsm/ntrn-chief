@@ -17,38 +17,51 @@ trait Process
         return trim(trim($cmd).' '.static::buildProcessArgs($args, $defaults, true));
     }
 
-    public static function buildProcessArgs(array $args = [], array $defaults = [], bool $asString = false): string|array
+    protected static function resolveProcessArg(string|int $argKey, mixed $argVal, bool $assoc = false): array
     {
-        $built = [];
+        $arg = Str::of(match (true) {
+            is_int($argKey) && blank($argVal) => (string) $argKey,
+            is_int($argKey) && ! blank($argVal) => (string) $argVal,
+            default => "{$argKey}={$argVal}",
+        })->trim();
 
-        foreach ([$defaults, $args] as $level) {
-            foreach ($level as $argKey => $argVal) {
-                $arg = Str::of(match (true) {
-                    is_int($argKey) && blank($argVal) => (string) $argKey,
-                    is_int($argKey) && ! blank($argVal) => (string) $argVal,
-                    default => "{$argKey}={$argVal}",
-                })->trim();
+        $argKey = $arg->ltrim('-')->when(
+            fn (Stringable $str) => $str->contains('='),
+            fn (Stringable $str) => $str->before('='),
+        )->prepend('--')->value();
 
-                $argKey = $arg->ltrim('-')->when(
-                    fn (Stringable $str) => $str->contains('='),
-                    fn (Stringable $str) => $str->before('='),
-                )->prepend('--')->value();
+        $argVal = $arg->when(
+            fn (Stringable $str) => $str->contains('='),
+            fn (Stringable $str) => $str->after('=')->ltrim('='),
+            fn (Stringable $str) => $str->makeEmpty(),
+        )->value();
 
-                if (in_array($argKey, array_keys($built))) {
+        return $assoc ? [$argKey => $argVal] : [$argKey, $argVal];
+    }
+
+    public static function buildProcessArgs(array $args = [], array $defaults = [], bool $asString = false, bool $allowMultiple = true, bool $exclusiveDefaults = true): string|array
+    {
+        $built = collect();
+
+        foreach ([$defaults, $args] as $stage => $level) {
+            $exclusive = $allowMultiple && $exclusiveDefaults && $stage === 1;
+            foreach ($level as $key => $val) {
+                [$key, $val] = static::resolveProcessArg($key, $val);
+
+                if ((! $allowMultiple || $exclusive) && $built->contains(fn ($item) => $item['key'] === $key && (! $exclusive || $item['stage'] === 0))) {
                     continue;
                 }
 
-                $argVal = $arg->when(
-                    fn (Stringable $str) => $str->contains('='),
-                    fn (Stringable $str) => $str->after('=')->ltrim('='),
-                    fn (Stringable $str) => $str->makeEmpty(),
-                )->value();
-
-                $built[$argKey] = $argVal;
+                $built->push([
+                    'key' => $key,
+                    'val' => $val,
+                    'final' => $key . (blank($val) ? '' : "={$val}"),
+                    'stage' => $stage,
+                ]);
             }
         }
 
-        $built = array_values(Arr::map($built, fn ($value, $key) => blank($value) ? $key : "{$key}={$value}"));
+        $built = $built->pluck('final')->toArray();
 
         return $asString ? Arr::join($built, ' ') : $built;
     }

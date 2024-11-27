@@ -15,6 +15,7 @@ trait App
             \Illuminate\Console\Scheduling\ScheduleListCommand::class,
             \Illuminate\Console\Scheduling\ScheduleRunCommand::class,
             \Illuminate\Console\Scheduling\ScheduleFinishCommand::class,
+            \Illuminate\Console\Scheduling\ScheduleWorkCommand::class,
             \Symfony\Component\Console\Command\DumpCompletionCommand::class,
         ];
 

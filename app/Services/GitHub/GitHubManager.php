@@ -53,9 +53,10 @@ class GitHubManager extends AbstractGitHub implements GitHubContract
     public function getDevClient(bool $uploads = false): ?PendingRequest
     {
         $addr = $uploads ? 'uploads' : 'api';
+
         return static::$devClient
             ->baseUrl("https://{$addr}.github.com/repos/{$this->devOwner}/{$this->devRepo}")
-            ->when($uploads, fn($client) => $client->contentType('application/octet-stream'));
+            ->when($uploads, fn ($client) => $client->contentType('application/octet-stream'));
     }
 
     public function getUpdateClient(): ?PendingRequest

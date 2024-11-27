@@ -38,6 +38,11 @@ return Helper::isPhar() ? [] : [
         ],
         'spc' => [
             'local' => joinBasePath('builds', 'utils', 'spc', 'spc-bin', '2.3.6_macos-aarch64'),
+            'args' => [
+                'debug',
+                'no-interaction',
+                'with-ini-set="phar.readonly=Off"'
+            ],
             'chmod' => '0755',
             'remote' => [
                 'url' => 'https://github.com/crazywhalecc/static-php-cli/releases/download/2.3.6/spc-macos-aarch64.tar.gz',
