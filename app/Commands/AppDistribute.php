@@ -29,9 +29,11 @@ class AppDistribute extends TaskingCommand
 {
     use Configable;
 
-    protected $signature = 'app:distribute';
+    protected $signature = 'app:distribute
+    {--latest : Distribute the latest build}
+    {--dist=* : Distributions to build}';
 
-    protected $description = 'Command description';
+    protected $description = 'Distribute the built application';
 
     protected array $prompts = [];
 
@@ -139,35 +141,58 @@ class AppDistribute extends TaskingCommand
                 'data' => null,
             ],
         ];
-        $this->prompts['phar'] = $this->prompt('select',
-            label: 'Select Build to Distribute',
-            options: $builds,
-            default: 0,
-            validate: function ($value) use (&$info) {
-                $info['build']['file'] = join_paths(dirname($value), 'build.json');
-                if (! File::exists($info['build']['file'])) {
-                    return "Build information file does not exist at {$info['build']['file']}";
-                }
 
-                return null;
-            },
-        );
+        if ($this->option('latest')){
+            $this->configables['phar'] = $builds[0];
+            $info['build']['file'] = join_paths(dirname($builds[0]), 'build.json');
+            if (! File::exists($info['build']['file'])) {
+                $this->setTaskMessage("<error>Build information file does not exist at {$info['build']['file']} for latest.</error>");
 
-        $this->configables['phar'] = $this->prompts['phar']->prompt();
+                return false;
+            }
+        }else {
+            $this->prompts['phar'] = $this->prompt('select',
+                label: 'Select Build to Distribute',
+                options: $builds,
+                default: 0,
+                validate: function ($value) use (&$info) {
+                    $info['build']['file'] = join_paths(dirname($value), 'build.json');
+                    if (! File::exists($info['build']['file'])) {
+                        return "Build information file does not exist at {$info['build']['file']}";
+                    }
+
+                    return null;
+                },
+            );
+
+            $this->configables['phar'] = $this->prompts['phar']->prompt();
+        }
+
         $info['build']['data'] = File::json($info['build']['file']);
         $this->configables['info'] = $info;
 
         $dists = $this->config('get', 'dists', []);
 
-        $this->prompts['dist'] = $this->prompt('multiselect',
-            label: 'Select Distributions to Build',
-            options: $dists,
-            default: $dists,
-        );
+        if (! blank($this->option('dist'))) {
+            if (count(array_intersect($this->option('dist'), $dists)) !== count($this->option('dist'))) {
+                $distList = Arr::join($this->option('dist'), ', ');
+                $distAvail = Arr::join($dists, ', ');
+                $this->setTaskMessage("<error>Invalid distribution(s) [{$distList}] selected. Available: {$distAvail}</error>");
 
-        $dist = $this->prompts['dist']->prompt();
+                return false;
+            }
+            $this->configables['dist'] = $this->option('dist');
+        }else {
+            $this->prompts['dist'] = $this->prompt('multiselect',
+                label: 'Select Distributions to Build',
+                options: $dists,
+                default: $dists,
+            );
 
-        $this->configables['dist'] = $dist;
+            $dist = $this->prompts['dist']->prompt();
+
+            $this->configables['dist'] = $dist;
+        }
 
         return true;
     }

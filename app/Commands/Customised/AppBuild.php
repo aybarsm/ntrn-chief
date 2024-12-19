@@ -31,7 +31,9 @@ class AppBuild extends TaskingCommand
 
     protected $signature = 'app:build
     {--timeout=300 : The timeout in seconds or 0 to disable}
-    {--b|box=* : Extra options to pass to Box}';
+    {--b|box=* : Extra options to pass to Box}
+    {--no-pint : Skip pint checks and actions}
+    {--no-git : Skip git checks and actions}';
 
     protected $description = 'Build a single file executable (Customised)';
 
@@ -50,194 +52,198 @@ class AppBuild extends TaskingCommand
 
         $prompts = [];
 
-        $pint = join_paths(base_path(), 'vendor', 'bin', 'pint');
-        if (File::exists($pint)) {
-            $this->output->writeln('<comment>Checking pint.</comment>');
-            $result = $process->run("{$pint} --test");
-            $pattern = '/\.\s*(?P<files>\d+)\s*files.*?(?P<issues>\d+)\s*style issues.*?\r?\n?/';
-            preg_match($pattern, $result->output(), $matches);
-            if (isset($matches['files']) && isset($matches['issues'])) {
-                $prompts['pint'] = $this->prompt('confirm',
-                    label: "Pint found {$matches['issues']} style issues in {$matches['files']} files. Would you like to run pint?",
-                );
-                $runPint = $prompts['pint']->prompt();
-                if ($runPint) {
-                    $result = $process->run("{$pint}");
-                    $this->setTaskMessage($result->successful() ? '<info>Pint ran successfully.</info>' : '<error>Pint failed to run.</error>');
+
+        if (! $this->option('no-pint')) {
+            $pint = join_paths(base_path(), 'vendor', 'bin', 'pint');
+            if (File::exists($pint)) {
+                $this->output->writeln('<comment>Checking pint.</comment>');
+                $result = $process->run("{$pint} --test");
+                $pattern = '/\.\s*(?P<files>\d+)\s*files.*?(?P<issues>\d+)\s*style issues.*?\r?\n?/';
+                preg_match($pattern, $result->output(), $matches);
+                if (isset($matches['files']) && isset($matches['issues'])) {
+                    $prompts['pint'] = $this->prompt('confirm',
+                        label: "Pint found {$matches['issues']} style issues in {$matches['files']} files. Would you like to run pint?",
+                    );
+                    $runPint = $prompts['pint']->prompt();
+                    if ($runPint) {
+                        $result = $process->run("{$pint}");
+                        $this->setTaskMessage($result->successful() ? '<info>Pint ran successfully.</info>' : '<error>Pint failed to run.</error>');
+                    }
                 }
             }
         }
 
-        $result = $process->run('git rev-parse --is-inside-work-tree');
+        if (! $this->option('no-git')) {
+            $result = $process->run('git rev-parse --is-inside-work-tree');
 
-        if (! $result->successful() || Str::firstLine($result->output()) != 'true') {
-            $this->setTaskMessage('<error>Failed to check repository status.</error>');
+            if (!$result->successful() || Str::firstLine($result->output()) != 'true') {
+                $this->setTaskMessage('<error>Failed to check repository status.</error>');
 
-            return false;
-        }
+                return false;
+            }
 
-        $commands = [];
-        $table = [];
-        $table[] = ['Repository Status', 'Healthy'];
+            $commands = [];
+            $table = [];
+            $table[] = ['Repository Status', 'Healthy'];
 
-        $result = $process->run('git symbolic-ref --short HEAD');
+            $result = $process->run('git symbolic-ref --short HEAD');
 
-        if (! $result->successful()) {
-            $this->setTaskMessage('<error>Failed to retrieve branch name.</error>');
+            if (!$result->successful()) {
+                $this->setTaskMessage('<error>Failed to retrieve branch name.</error>');
 
-            return false;
-        }
+                return false;
+            }
 
-        $branch = Str::firstLine($result->output());
-        $this->config('set', 'git.branch', $branch);
-        $table[] = ['Branch', $branch];
+            $branch = Str::firstLine($result->output());
+            $this->config('set', 'git.branch', $branch);
+            $table[] = ['Branch', $branch];
 
-        $result = $process->run('git status --porcelain');
+            $result = $process->run('git status --porcelain');
 
-        if (! blank(trim($result->output()))) {
-            $hint = "Branch: {$branch}";
-            $prompts['commit'] = $this->prompt('confirm',
-                label: 'Repository is not clean. Would you like to commit changes?',
-                hint: $hint,
-            );
-
-            $commit = $prompts['commit']->prompt();
-            $table[] = ['Changes will be commited', $commit ? 'Yes' : 'No'];
-            $commands[] = $commit ? 'git add . --all' : null;
-
-            if ($commit) {
-                $prompts['message'] = $this->prompt('text',
-                    label: 'Enter commit message:',
+            if (!blank(trim($result->output()))) {
+                $hint = "Branch: {$branch}";
+                $prompts['commit'] = $this->prompt('confirm',
+                    label: 'Repository is not clean. Would you like to commit changes?',
                     hint: $hint,
                 );
 
-                $message = $prompts['message']->prompt();
-                $table[] = ['Commit Message', $message];
-                $commands[] = 'git commit '.(blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
+                $commit = $prompts['commit']->prompt();
+                $table[] = ['Changes will be commited', $commit ? 'Yes' : 'No'];
+                $commands[] = $commit ? 'git add . --all' : null;
 
-                $currentTag = app('git.version');
-                $table[] = ['Current Tag', $currentTag];
+                if ($commit) {
+                    $prompts['message'] = $this->prompt('text',
+                        label: 'Enter commit message:',
+                        hint: $hint,
+                    );
 
-                $unreleased = Str::matchesReplace(
-                    config('app.version_pattern'),
-                    ['major' => 0, 'minor' => 0, 'patch' => 0]
-                );
+                    $message = $prompts['message']->prompt();
+                    $table[] = ['Commit Message', $message];
+                    $commands[] = 'git commit ' . (blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
 
-                $hint = "Branch: {$branch} / Current Tag: {$currentTag}";
-                $prompts['tag'] = $this->prompt('select',
-                    label: 'App next version?',
-                    hint: $hint,
-                    default: -1,
-                    options: [
-                        -1 => 'Do not change',
-                        1 => 'Patch',
-                        2 => 'Minor',
-                        3 => 'Major',
-                    ],
-                    transform: fn ($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
-                );
+                    $currentTag = app('git.version');
+                    $table[] = ['Current Tag', $currentTag];
 
-                $tag = $prompts['tag']->prompt();
-                $tag = $tag <= 0 ? null : $tag;
-                $table[] = ['Next Tag', $tag === null ? 'No change' : $tag];
-                $commands[] = $tag === null ? null : "git tag -a {$tag} -m \"{$tag}\"";
+                    $unreleased = Str::matchesReplace(
+                        config('app.version_pattern'),
+                        ['major' => 0, 'minor' => 0, 'patch' => 0]
+                    );
 
-                $hint .= $tag === null ? '' : " / Next Tag: {$tag}";
-                $prompts['push'] = $this->prompt('confirm',
-                    label: 'Push changes to remote?',
-                    hint: $hint,
-                );
+                    $hint = "Branch: {$branch} / Current Tag: {$currentTag}";
+                    $prompts['tag'] = $this->prompt('select',
+                        label: 'App next version?',
+                        hint: $hint,
+                        default: -1,
+                        options: [
+                            -1 => 'Do not change',
+                            1 => 'Patch',
+                            2 => 'Minor',
+                            3 => 'Major',
+                        ],
+                        transform: fn($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
+                    );
 
-                $push = $prompts['push']->prompt();
-                $table[] = ['Push to remote', $push ? 'Yes' : 'No'];
+                    $tag = $prompts['tag']->prompt();
+                    $tag = $tag <= 0 ? null : $tag;
+                    $table[] = ['Next Tag', $tag === null ? 'No change' : $tag];
+                    $commands[] = $tag === null ? null : "git tag -a {$tag} -m \"{$tag}\"";
 
-                if ($push) {
+                    $hint .= $tag === null ? '' : " / Next Tag: {$tag}";
+                    $prompts['push'] = $this->prompt('confirm',
+                        label: 'Push changes to remote?',
+                        hint: $hint,
+                    );
 
-                    $result = $process->run('git remote show');
-                    if (! $result->successful()) {
-                        $this->setTaskMessage('<error>Failed to retrieve remote repositories.</error>');
+                    $push = $prompts['push']->prompt();
+                    $table[] = ['Push to remote', $push ? 'Yes' : 'No'];
 
-                        return false;
-                    }
+                    if ($push) {
 
-                    $availableRemotes = Str::of($result->output())->lines(-1, PREG_SPLIT_NO_EMPTY, true);
-                    if ($availableRemotes->isEmpty()) {
-                        $this->setTaskMessage('<error>No remote repositories available.</error>');
-
-                        return false;
-                    }
-                    $table[] = ['Available Remotes ('.$availableRemotes->count().')', Arr::join($availableRemotes->toArray(), ', ')];
-
-                    if ($availableRemotes->count() > 1) {
-                        $prompts['remotes'] = $this->prompt('multiselect',
-                            label: 'Which remote or remotes would you like to push?',
-                            hint: $hint,
-                            options: $availableRemotes,
-                            required: true,
-                        );
-
-                        $remotes = $prompts['remotes']->prompt();
-                    } else {
-                        $remotes = $availableRemotes->toArray();
-                    }
-
-                    $table[] = ['Push Remotes ('.count($remotes).')', Arr::join($remotes, ', ')];
-                    foreach ($remotes as $remote) {
-                        $commands[] = "git push {$remote} {$branch}";
-                        if ($tag !== null) {
-                            $commands[] = "git push {$remote} {$tag}";
-                        }
-                    }
-                }
-
-                foreach ($prompts as $prompt) {
-                    $prompt->eraseRenderedLines();
-                }
-
-                $prompts['table'] = $this->prompt('table', headers: ['Description', 'Value'], rows: $table);
-                $prompts['table']->prompt();
-
-                $this->output->writeln('<comment>Git commands will be executed:</comment>');
-                $commands = Arr::whereNotNull($commands);
-                $this->output->listing($commands);
-
-                $continue = $this->prompt('confirm',
-                    label: 'Continue with git actions?',
-                    hint: 'Please review the information above.',
-                )->prompt();
-
-                $prompts['table']->clear();
-
-                if ($continue) {
-                    foreach ($commands as $command) {
-                        $result = $process->run($command);
-                        if (! $result->successful()) {
-                            $this->setTaskMessage("<error>Failed to execute command: {$command}</error>");
+                        $result = $process->run('git remote show');
+                        if (!$result->successful()) {
+                            $this->setTaskMessage('<error>Failed to retrieve remote repositories.</error>');
 
                             return false;
+                        }
+
+                        $availableRemotes = Str::of($result->output())->lines(-1, PREG_SPLIT_NO_EMPTY, true);
+                        if ($availableRemotes->isEmpty()) {
+                            $this->setTaskMessage('<error>No remote repositories available.</error>');
+
+                            return false;
+                        }
+                        $table[] = ['Available Remotes (' . $availableRemotes->count() . ')', Arr::join($availableRemotes->toArray(), ', ')];
+
+                        if ($availableRemotes->count() > 1) {
+                            $prompts['remotes'] = $this->prompt('multiselect',
+                                label: 'Which remote or remotes would you like to push?',
+                                hint: $hint,
+                                options: $availableRemotes,
+                                required: true,
+                            );
+
+                            $remotes = $prompts['remotes']->prompt();
                         } else {
-                            $this->setTaskMessage("<info>Command executed successfully: {$command}</info>");
+                            $remotes = $availableRemotes->toArray();
+                        }
+
+                        $table[] = ['Push Remotes (' . count($remotes) . ')', Arr::join($remotes, ', ')];
+                        foreach ($remotes as $remote) {
+                            $commands[] = "git push {$remote} {$branch}";
+                            if ($tag !== null) {
+                                $commands[] = "git push {$remote} {$tag}";
+                            }
                         }
                     }
-                }
 
-                if (! $continue) {
-                    $this->output->writeln('<comment>Git actions cancelled.</comment>');
+                    foreach ($prompts as $prompt) {
+                        $prompt->eraseRenderedLines();
+                    }
 
-                    $continueBuild = $this->prompt('confirm',
-                        label: 'Continue with build process?'
+                    $prompts['table'] = $this->prompt('table', headers: ['Description', 'Value'], rows: $table);
+                    $prompts['table']->prompt();
+
+                    $this->output->writeln('<comment>Git commands will be executed:</comment>');
+                    $commands = Arr::whereNotNull($commands);
+                    $this->output->listing($commands);
+
+                    $continue = $this->prompt('confirm',
+                        label: 'Continue with git actions?',
+                        hint: 'Please review the information above.',
                     )->prompt();
 
-                    if (! $continueBuild) {
-                        $this->setTaskMessage('<error>Build process cancelled.</error>');
+                    $prompts['table']->clear();
 
-                        return false;
+                    if ($continue) {
+                        foreach ($commands as $command) {
+                            $result = $process->run($command);
+                            if (!$result->successful()) {
+                                $this->setTaskMessage("<error>Failed to execute command: {$command}</error>");
+
+                                return false;
+                            } else {
+                                $this->setTaskMessage("<info>Command executed successfully: {$command}</info>");
+                            }
+                        }
                     }
-                }
 
+                    if (!$continue) {
+                        $this->output->writeln('<comment>Git actions cancelled.</comment>');
+
+                        $continueBuild = $this->prompt('confirm',
+                            label: 'Continue with build process?'
+                        )->prompt();
+
+                        if (!$continueBuild) {
+                            $this->setTaskMessage('<error>Build process cancelled.</error>');
+
+                            return false;
+                        }
+                    }
+
+                }
             }
         }
-
         return true;
     }
 

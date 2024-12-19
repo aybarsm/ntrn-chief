@@ -55,7 +55,7 @@ trait Process
                 $built->push([
                     'key' => $key,
                     'val' => $val,
-                    'final' => $key . (blank($val) ? '' : "={$val}"),
+                    'final' => $key.(blank($val) ? '' : "={$val}"),
                     'stage' => $stage,
                 ]);
             }

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-#TODO: Force update
+//TODO: Force update
 class AppUpdate extends Command
 {
     protected $signature = 'app:update
