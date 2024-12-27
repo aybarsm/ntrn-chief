@@ -6,5 +6,5 @@ return [
     'paths' => [
         resource_path('views'),
     ],
-    'compiled' => env('VIEW_COMPILED_PATH', storage_path('cache/views')),
+    'compiled' => env('VIEW_COMPILED_PATH', storage_path('app/cache/views')),
 ];

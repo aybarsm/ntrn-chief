@@ -11,8 +11,10 @@ use App\Traits\Configable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Fluent;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -23,9 +25,78 @@ class NtrnServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
-        //        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
         $this->loadConfigs();
+        $this->registerBindings();
+        $this->onBooted();
+        $this->onTerminating();
+    }
+
+    public function boot(): void
+    {
+        $this->loadMixins();
+        $this->loadViews();
+        $this->loadMigrations();
+    }
+
+    protected function onBooted(): void
+    {
+        $this->app->booted(function () {
+            static::initPromptTheme();
+            static::initValidatorExtensions();
+        });
+    }
+
+    protected function onTerminating(): void
+    {
+        $this->app->terminating(function (...$params): void
+        {
+            if (! $this->isConfCacheEligible()) {
+                return;
+            }
+
+            Cache::store(config('ntrn.conf.cache.store'))
+                ->rememberForever(
+                    key: config('ntrn.conf.cache.key'),
+                    callback: fn () => serialize(app('conf'))
+                );
+        });
+    }
+
+    protected function isConfCacheEligible(): bool
+    {
+        $key = config('ntrn.conf.cache.key');
+        $store = config('ntrn.conf.cache.store');
+
+        if (blank($store) || blank($key)) {
+            return false;
+        }
+
+        try {
+            Cache::store($store);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    protected function registerBindings(): void
+    {
+        $this->app->singleton(
+            'conf',
+            function (Application $app): Fluent
+            {
+                if ($this->isConfCacheEligible()) {
+                    return unserialize(Cache::store(config('ntrn.conf.cache.store'))
+                        ->get(
+                            key: config('ntrn.conf.cache.key'),
+                            default: serialize(new Fluent()))
+                    );
+                }
+
+                return new Fluent();
+            }
+        );
+
         $this->app->bind(
             'git.branch',
             function (Application $app) {
@@ -39,45 +110,60 @@ class NtrnServiceProvider extends ServiceProvider
                 return trim($process->getOutput());
             }
         );
-        App::booted(function () {
-            static::initPromptTheme();
-            static::initValidatorExtensions();
-        });
     }
 
-    public function boot(): void
+    protected function loadMixins(): void
     {
-        $this->loadMixins();
-        $this->loadViews();
+        foreach (config('ntrn.mixins.list', []) as $mixin) {
+            $this->addMixin($mixin);
+        }
+    }
+
+    protected function isConfigLoadEligible(string $key): string|false
+    {
+        $path = config(Str::of($key)->trim()->trim('.')->start('ntrn.')->value(), '');
+
+        return ! blank($path) && file_exists($path) && is_dir($path) ? $path : false;
     }
 
     protected function loadConfigs(): void
     {
-        $path = config('ntrn.configs');
-        if (! file_exists($path) || ! is_dir($path)) {
+        if (($path = $this->isConfigLoadEligible('ntrn.configs')) === false) {
             return;
         }
 
-        $files = Finder::create()->files()->in($path)->depth('== 0')->name('*.php');
+        $files = Finder::create()
+            ->files()
+            ->in($path)
+            ->depth('== 0')
+            ->name('*.php');
 
         foreach($files as $file) {
-            $this->mergeConfigFrom($file->getRealPath(), basename($file->getRealPath(), '.php'));
+            $key = Str::of($file->getFilenameWithoutExtension())
+                ->trim()
+                ->trim('.')
+                ->start('ntrn.')
+                ->value();
+            $this->mergeConfigFrom($file->getRealPath(), $key);
         }
     }
 
     protected function loadViews(): void
     {
-        $path = config('ntrn.views');
-        if (! file_exists($path) || ! is_dir($path)) {
+        if (($path = $this->isConfigLoadEligible('ntrn.views')) === false) {
             return;
         }
 
         $this->loadViewsFrom($path, 'ntrn');
+    }
 
-//        $dirs = Finder::create()->directories()->in($path)->depth('== 0');
-//        foreach($dirs as $dir) {
-//
-//        }
+    protected function loadMigrations(): void
+    {
+        if (($path = $this->isConfigLoadEligible('ntrn.migrations')) === false) {
+            return;
+        }
+
+        $this->loadMigrationsFrom($path);
     }
 
     /** @noinspection PhpUnreachableStatementInspection */
@@ -105,13 +191,6 @@ class NtrnServiceProvider extends ServiceProvider
 
         $bind::mixin(new $mixin, (bool) config('ntrn.mixins.replace', true));
         $this->config('set', $cnfKey, true);
-    }
-
-    protected function loadMixins(): void
-    {
-        foreach (config('ntrn.mixins.list', []) as $mixin) {
-            $this->addMixin($mixin);
-        }
     }
 
     protected static function initPromptTheme(): void

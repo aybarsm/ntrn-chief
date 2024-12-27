@@ -2,6 +2,7 @@
 
 namespace App\Framework;
 
+use Illuminate\Support\Fluent;
 use LaravelZero\Framework\Application as LaravelZeroApplication;
 
 class Application extends LaravelZeroApplication

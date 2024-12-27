@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Framework\Commands\Command;
+use App\Services\Helper;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class AppInit extends Command
 
     protected $description = 'Initialise the application';
 
-    public function handle()
+    public function handle(): void
     {
         $path = $this->app->environmentFilePath();
         if (File::exists($path)) {
@@ -25,17 +26,8 @@ class AppInit extends Command
         }
 
         $source = '';
-        if (PHP_OS_FAMILY === 'Linux') {
-            $this->info('Detected Linux OS');
-            $process = Process::run('uname -r');
-            if ($process->successful()) {
-                $kernel = trim($process->output());
-                $this->info("Kernel: $kernel");
-                if (Str::endsWith($kernel, '-vyos')) {
-                    $this->info('Detected VyOS kernel');
-                    $source = resource_path('env/env.ros.example');
-                }
-            }
+        if (Helper::appIsVyOS()) {
+            $source = resource_path('env/env.ros.example');
         }
 
         $source = blank($source) ? resource_path('env/env.example') : $source;

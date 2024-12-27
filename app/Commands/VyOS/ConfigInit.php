@@ -17,7 +17,6 @@ class ConfigInit extends Command
 
     public function handle(): void
     {
-//        $config = VyOs::getConfig(VyOSConfig::ARRAY);
-//        $this->line(json_encode($config, JSON_PRETTY_PRINT));
+        dump(config('app.key'));
     }
 }

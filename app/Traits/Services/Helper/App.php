@@ -3,6 +3,7 @@
 namespace App\Traits\Services\Helper;
 
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 
 trait App
 {
@@ -109,6 +110,7 @@ trait App
             \Illuminate\Pipeline\PipelineServiceProvider::class,
             \Illuminate\Queue\QueueServiceProvider::class,
             \Illuminate\Validation\ValidationServiceProvider::class,
+            \Illuminate\Encryption\EncryptionServiceProvider::class,
         ];
 
         if (static::isPhar()) {
@@ -131,5 +133,26 @@ trait App
         }
 
         return data_get(static::$buildInfo, $key, $default);
+    }
+
+    public static function appIsVyOS(): bool
+    {
+        if (PHP_OS_FAMILY !== 'Linux') {
+            return false;
+        }
+
+        $process = Process::fromShellCommandline(
+            'uname -r',
+        );
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        $kernel = trim($process->getOutput());
+        if (! Str::endsWith($kernel, '-vyos')) {
+            return false;
+        }
+
+        return true;
     }
 }

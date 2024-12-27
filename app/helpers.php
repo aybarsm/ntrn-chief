@@ -63,3 +63,11 @@ if (! function_exists('falsy')) {
         return in_array($value, ['no', 'off', '0', 0, false, 'false'], true);
     }
 }
+
+if (! function_exists('isSerialized')) {
+    function isSerialized(string $str): bool
+    {
+        $data = @unserialize($str);
+        return $str === 'b:0;' || $data !== false;
+    }
+}

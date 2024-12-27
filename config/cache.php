@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'default' => env('CACHE_STORE', 'array'),
+    'default' => env('CACHE_STORE', when(file_exists(storage_path()) && is_dir(storage_path()), 'file', 'array')),
     'stores' => [
         'array' => [
             'driver' => 'array',
@@ -17,8 +17,8 @@ return [
         ],
         'file' => [
             'driver' => 'file',
-            'path' => storage_path('cache'),
-            'lock_path' => storage_path('cache'),
+            'path' => storage_path('cache/store'),
+            'lock_path' => storage_path('cache/store'),
         ],
         'memcached' => [
             'driver' => 'memcached',
