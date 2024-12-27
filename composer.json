@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": "^8.3.0",
+        "gherkins/regexpbuilderphp": "^2.1",
         "illuminate/database": "^11.5",
         "illuminate/encryption": "^11.29",
         "illuminate/http": "^11.5",

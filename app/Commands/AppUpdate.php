@@ -97,6 +97,7 @@ class AppUpdate extends Command
             File::move($this->updateFile, $this->file);
             Log::info('Update file moved', $context);
         }
+        $this->info('Application updated');
     }
 
     public function schedule(Schedule $schedule): void

@@ -31,7 +31,7 @@ class AppDistribute extends TaskingCommand
 
     protected $signature = 'app:distribute
     {--latest : Distribute the latest build}
-    {--dist=* : Distributions to build}';
+    {--dist=* : Binaries to build}';
 
     protected $description = 'Distribute the built application';
 
@@ -84,8 +84,9 @@ class AppDistribute extends TaskingCommand
             'spc.remote.archive' => 'boolean',
             'spc.remote.archiveFile' => 'string|required_if_accepted:spc.remote.archive',
             'static' => 'array|min:1',
-            'static.*.binary' => 'required|string',
-            'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
+            'static.*.binary' => 'required|string|distinct',
+//            'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
+            'static.*.os' => 'required|string|in:darwin,linux,windows',
             'static.*.arch' => 'required|string|in:x86_64,aarch64',
             'static.*.local' => 'required|string',
             'static.*.args' => 'array',
@@ -122,7 +123,7 @@ class AppDistribute extends TaskingCommand
             $item['downloadExists'] = ! $item['localExists'] && File::exists($item['remote']['saveAs']);
             $item['dist'] = "{$item['os']}-{$item['arch']}";
 
-            return [$item['dist'] => $item];
+            return [$item['binary'] => $item];
         });
 
         $data['dists'] = array_keys($data['static']);
@@ -184,7 +185,7 @@ class AppDistribute extends TaskingCommand
             $this->configables['dist'] = $this->option('dist');
         }else {
             $this->prompts['dist'] = $this->prompt('multiselect',
-                label: 'Select Distributions to Build',
+                label: 'Select Binaries to Distribute',
                 options: $dists,
                 default: $dists,
             );
@@ -203,11 +204,11 @@ class AppDistribute extends TaskingCommand
 
         foreach ($statics as $sfx) {
             if ($sfx['localExists']) {
-                $this->setTaskMessage("<comment>{$sfx['dist']} Sfx already exists locally at {$sfx['local']}</comment>");
+                $this->setTaskMessage("<comment>{$sfx['binary']} Sfx already exists locally at {$sfx['local']}</comment>");
 
                 continue;
             } elseif ($sfx['downloadExists']) {
-                $this->setTaskMessage("<comment>{$sfx['dist']} Sfx already downloaded at {$sfx['remote']['saveAs']}</comment>");
+                $this->setTaskMessage("<comment>{$sfx['binary']} Sfx already downloaded at {$sfx['remote']['saveAs']}</comment>");
 
                 continue;
             }
@@ -229,10 +230,10 @@ class AppDistribute extends TaskingCommand
             ])->get($sfx['remote']['url']);
 
             if ($response->successful()) {
-                $this->setTaskMessage("<info>{$sfx['dist']} Sfx downloaded successfully to {$sfx['remote']['saveAs']}</info>");
+                $this->setTaskMessage("<info>{$sfx['binary']} Sfx downloaded successfully to {$sfx['remote']['saveAs']}</info>");
                 $this->config('set', "static.{$sfx['dist']}.downloadExists", true);
             } else {
-                $this->setTaskMessage("<error>{$sfx['dist']} Sfx download failed.</error>");
+                $this->setTaskMessage("<error>{$sfx['binary']} Sfx download failed.</error>");
             }
         }
 
@@ -248,7 +249,7 @@ class AppDistribute extends TaskingCommand
             }
 
             if (! File::exists($sfx['remote']['saveAs'])) {
-                $this->setTaskMessage("<error>{$sfx['dist']} Sfx archive does not exist at {$sfx['remote']['saveAs']}</error>");
+                $this->setTaskMessage("<error>{$sfx['binary']} Sfx archive does not exist at {$sfx['remote']['saveAs']}</error>");
 
                 continue;
             }
@@ -257,7 +258,7 @@ class AppDistribute extends TaskingCommand
             $extracted = join_paths($extractDir, $sfx['remote']['archiveFile']);
 
             if (File::exists($extracted)) {
-                $this->setTaskMessage("<error>{$sfx['dist']} There is already an extracted archive file at {$extracted}. Please delete it before proceeding.</error>");
+                $this->setTaskMessage("<error>{$sfx['binary']} There is already an extracted archive file at {$extracted}. Please delete it before proceeding.</error>");
 
                 continue;
             }
@@ -267,7 +268,7 @@ class AppDistribute extends TaskingCommand
             try {
                 Archive::extractTo($sfx['remote']['saveAs'], $extractDir);
             } catch (\Throwable $exception) {
-                $this->setTaskMessage("<error>{$sfx['dist']} Sfx archive could not be extracted from {$sfx['remote']['saveAs']}</error>");
+                $this->setTaskMessage("<error>{$sfx['binary']} Sfx archive could not be extracted from {$sfx['remote']['saveAs']}</error>");
                 $this->setTaskMessage("<error>Exception Message: {$exception->getMessage()}</error>");
 
                 continue;
@@ -275,7 +276,7 @@ class AppDistribute extends TaskingCommand
 
             File::move($extracted, $sfx['local']);
             $this->config('set', "static.{$sfx['dist']}.localExists", true);
-            $this->setTaskMessage("<info>{$sfx['dist']} Sfx archive extracted successfully to {$sfx['local']}</info>");
+            $this->setTaskMessage("<info>{$sfx['binary']} Sfx archive extracted successfully to {$sfx['local']}</info>");
         }
 
         return true;
@@ -294,7 +295,7 @@ class AppDistribute extends TaskingCommand
 
         foreach ($statics as $dist => $sfx) {
             if (! $sfx['localExists']) {
-                $this->setTaskMessage("<error>{$sfx['dist']} Sfx does not exist at {$sfx['local']}</error>");
+                $this->setTaskMessage("<error>{$sfx['binary']} Sfx does not exist at {$sfx['local']}</error>");
 
                 continue;
             }
@@ -304,7 +305,7 @@ class AppDistribute extends TaskingCommand
             $distPhar = "{$static}.phar";
             foreach ([$static, $staticMd5sum, $distPhar] as $file) {
                 if (File::exists($file)) {
-                    $this->setTaskMessage("<info>Deleting existing file for {$sfx['dist']} at {$file}</info>");
+                    $this->setTaskMessage("<info>Deleting existing file for {$sfx['binary']} at {$file}</info>");
                     File::delete($file);
                 }
             }
@@ -316,7 +317,7 @@ class AppDistribute extends TaskingCommand
 
             File::ensureDirectoryExists(dirname($static));
             if (! File::copy($basePhar, $distPhar)) {
-                $this->setTaskMessage("<error>Phar {$basePhar} could not be copied to {$distPhar} for {$sfx['dist']}</error>");
+                $this->setTaskMessage("<error>Phar {$basePhar} could not be copied to {$distPhar} for {$sfx['binary']}</error>");
 
                 continue;
             }
@@ -328,10 +329,12 @@ class AppDistribute extends TaskingCommand
                 continue;
             }
 
-            $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], [
+            $defaultArgs = array_merge([
                 'with-micro' => $sfx['local'],
                 'output' => $static,
             ], $spcDefaults);
+
+            $spcCmd = Helper::buildProcessCmd([$spcBinary, 'micro:combine', $distPhar], ($sfx['args'] ?? []), $defaultArgs);
 
             $building = Process::timeout(60)->start($spcCmd);
 
@@ -344,28 +347,27 @@ class AppDistribute extends TaskingCommand
 
                 if (isset($sfx['chmod'])) {
                     File::chmod($static, octdec($sfx['chmod']));
-                    $this->setTaskMessage("<info>Chmod set to {$sfx['chmod']} for {$sfx['dist']} at {$static}</info>");
+                    $this->setTaskMessage("<info>Chmod set to {$sfx['chmod']} for {$sfx['binary']} at {$static}</info>");
                 }
 
                 File::put($staticMd5sum, File::hash($static));
-                $this->setTaskMessage("<info>MD5Sum created for {$sfx['dist']} is at {$staticMd5sum}</info>");
+                $this->setTaskMessage("<info>MD5Sum created for {$sfx['binary']} is at {$staticMd5sum}</info>");
 
                 if (isset($sfx['sanityCheck'])) {
                     $sanityCmd = Str::replace(['{{BINARY}}', '{{BASE_PATH}}'], [$static, base_path()], $sfx['sanityCheck']);
                     $sanity = Process::run($sanityCmd);
                     if ($sanity->successful()) {
-                        $this->setTaskMessage("<info>Sanity Check for {$sfx['dist']} passed successfully</info>");
+                        $this->setTaskMessage("<info>Sanity Check for {$sfx['binary']} passed successfully</info>");
                     } else {
-                        $this->setTaskMessage("<error>Sanity Check for {$sfx['dist']} failed. Exit Code: {$sanity->exitCode()}</error>");
+                        $this->setTaskMessage("<error>Sanity Check for {$sfx['binary']} failed. Exit Code: {$sanity->exitCode()}</error>");
                     }
                 }
 
-                $this->setTaskMessage("<info>Static Binary for {$sfx['dist']} created successfully at {$static}</info>");
+                $this->setTaskMessage("<info>Static Binary for {$sfx['binary']} created successfully at {$static}</info>");
             } else {
-                $this->setTaskMessage("<error>Static Binary for {$sfx['dist']} could not be created. Exit Code: {$process->exitCode()}</error>");
+                $this->setTaskMessage("<error>Static Binary for {$sfx['binary']} could not be created. Exit Code: {$process->exitCode()}</error>");
             }
         }
-        exit();
 
         return true;
     }

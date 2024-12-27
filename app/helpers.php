@@ -51,6 +51,7 @@ if (! function_exists('config_value')) {
 if (! function_exists('truthy')) {
     function truthy(mixed $value): bool
     {
+        $value = is_string($value) ? strtolower($value) : $value;
         return in_array($value, ['yes', 'on', '1', 1, true, 'true'], true);
     }
 }
@@ -58,6 +59,7 @@ if (! function_exists('truthy')) {
 if (! function_exists('falsy')) {
     function falsy(mixed $value): bool
     {
+        $value = is_string($value) ? strtolower($value) : $value;
         return in_array($value, ['no', 'off', '0', 0, false, 'false'], true);
     }
 }

@@ -6,6 +6,7 @@ use App\Actions\AppUpdateDirect;
 use App\Actions\AppUpdateGitHubRelease;
 use App\Contracts\Actions\AppUpdateDirectContract;
 use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
+use App\Framework\Component\Finder;
 use App\Traits\Configable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Arr;
@@ -24,6 +25,7 @@ class NtrnServiceProvider extends ServiceProvider
     {
         //        $this->app->bind(AppUpdateGitHubReleaseContract::class, AppUpdateGitHubRelease::class);
         //        $this->app->bind(AppUpdateDirectContract::class, AppUpdateDirect::class);
+        $this->loadConfigs();
         $this->app->bind(
             'git.branch',
             function (Application $app) {
@@ -46,6 +48,36 @@ class NtrnServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMixins();
+        $this->loadViews();
+    }
+
+    protected function loadConfigs(): void
+    {
+        $path = config('ntrn.configs');
+        if (! file_exists($path) || ! is_dir($path)) {
+            return;
+        }
+
+        $files = Finder::create()->files()->in($path)->depth('== 0')->name('*.php');
+
+        foreach($files as $file) {
+            $this->mergeConfigFrom($file->getRealPath(), basename($file->getRealPath(), '.php'));
+        }
+    }
+
+    protected function loadViews(): void
+    {
+        $path = config('ntrn.views');
+        if (! file_exists($path) || ! is_dir($path)) {
+            return;
+        }
+
+        $this->loadViewsFrom($path, 'ntrn');
+
+//        $dirs = Finder::create()->directories()->in($path)->depth('== 0');
+//        foreach($dirs as $dir) {
+//
+//        }
     }
 
     /** @noinspection PhpUnreachableStatementInspection */

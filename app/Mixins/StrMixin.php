@@ -9,6 +9,17 @@ class StrMixin
 {
     const string BIND = \Illuminate\Support\Str::class;
 
+    public static function toPattern(): \Closure
+    {
+        return function (string|array $str, string $prefix = '/', string $suffix = '/', string $delimiter = '/'): string {
+            $str = is_array($str) ? implode('', $str) : $str;
+            return static::of(preg_quote($str, $delimiter))
+                ->when(! blank($prefix), fn($str) => $str->start($prefix))
+                ->when(! blank($suffix), fn($str) => $str->finish($suffix))
+                ->value();
+        };
+    }
+
     public static function removeEmptyLines(): \Closure
     {
         return function (string $str): string {
@@ -85,4 +96,6 @@ class StrMixin
                 ->unless($returnInstance, fn ($str) => $str->value());
         };
     }
+
+
 }

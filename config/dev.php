@@ -41,7 +41,7 @@ return Helper::isPhar() ? [] : [
             'args' => [
                 'debug',
                 'no-interaction',
-                'with-ini-set="phar.readonly=Off"',
+                '--with-ini-set="phar.readonly=Off"'
             ],
             'chmod' => '0755',
             'remote' => [
@@ -105,6 +105,22 @@ return Helper::isPhar() ? [] : [
                     'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.14-micro-macos-x86_64.tar.gz'),
                     'archive' => true,
                     'archiveFile' => 'micro.sfx',
+                ],
+            ],
+            [
+                'binary' => 'ntrn_ros',
+                'os' => 'linux',
+                'arch' => 'x86_64',
+                'local' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.14-micro-linux-x86_64.sfx'),
+                'chmod' => '0755',
+                'remote' => [
+                    'url' => 'https://dl.static-php.dev/static-php-cli/bulk/php-8.3.14-micro-linux-x86_64.tar.gz',
+                    'saveAs' => joinBasePath('builds', 'utils', 'spc', 'bulk', 'php-8.3.14-micro-linux-x86_64.tar.gz'),
+                    'archive' => true,
+                    'archiveFile' => 'micro.sfx',
+                ],
+                'args' => [
+                    '--with-ini-file=' . resource_path('ini/ntrn_ros/99-ntrn.ini'),
                 ],
             ],
         ],
