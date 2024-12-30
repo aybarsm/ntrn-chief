@@ -23,6 +23,7 @@ return [
             App\Mixins\StringableMixin::class,
             App\Mixins\StrMixin::class,
             App\Mixins\FilesystemMixin::class,
+            App\Mixins\DBMixin::class,
         ],
     ],
 ];

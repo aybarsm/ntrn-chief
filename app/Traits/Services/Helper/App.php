@@ -29,6 +29,7 @@ trait App
                 \LaravelZero\Framework\Commands\StubPublishCommand::class,
                 \Illuminate\Foundation\Console\VendorPublishCommand::class,
                 \Illuminate\Foundation\Console\RuleMakeCommand::class,
+                \Illuminate\Foundation\Console\ListenerMakeCommand::class,
             ];
         }
 

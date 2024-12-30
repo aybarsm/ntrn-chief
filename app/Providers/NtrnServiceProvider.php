@@ -8,11 +8,16 @@ use App\Contracts\Actions\AppUpdateDirectContract;
 use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Framework\Component\Finder;
 use App\Traits\Configable;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Fluent;
 use Illuminate\Support\ServiceProvider;
@@ -43,6 +48,7 @@ class NtrnServiceProvider extends ServiceProvider
         $this->app->booted(function () {
             static::initPromptTheme();
             static::initValidatorExtensions();
+            DB::timestampAwareTransactions();
         });
     }
 

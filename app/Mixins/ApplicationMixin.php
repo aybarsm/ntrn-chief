@@ -7,12 +7,4 @@ use Illuminate\Support\Fluent;
 class ApplicationMixin
 {
     const string BIND = \App\Framework\Application::class;
-
-//    public static function conf(): \Closure
-//    {
-//        return function (): Fluent
-//        {
-//
-//        };
-//    }
 }

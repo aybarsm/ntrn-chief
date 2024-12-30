@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\VyOSConfig;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Fluent;
 use Illuminate\Support\Str;
@@ -18,34 +19,34 @@ class VyOs
         return $process->failed() ? false : trim($process->output());
     }
 
-    protected static function prepCfg(array $commands): array
+    public static function prepareCfg(string|array|Collection $commands): array
     {
-        $res = [];
+        $commands = $commands instanceof Collection ? $commands->toArray() : $commands;
+        $commands = Arr::wrap($commands);
 
-        Arr::map($commands, function ($cmd, $key) use ($commands, &$res) {
+        $res = ['/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper begin'];
+
+        foreach($commands as $key => $cmd) {
             $cmd = Str::of($cmd)->trim()
                 ->chopStart('/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper')
                 ->trim()
                 ->value();
 
-            if ($key === array_key_first($commands) and $cmd !== 'begin') {
-                $res[] = '/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper begin';
+            if ($cmd === 'begin' || $cmd === 'end') {
+                continue;
             }
 
             $res[] = "/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper {$cmd}";
+        }
 
-            if ($key === array_key_last($commands) and $cmd !== 'end') {
-                $res[] = '/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end';
-            }
-        });
+        $res[] = '/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end';
 
         return $res;
     }
 
-    public static function cfg(string|array $commands): string|true
+    public static function cfg(string|array|Collection $commands): string|true
     {
-        $commands = static::prepCfg(Arr::wrap($commands));
-        foreach($commands as $cmd) {
+        foreach(static::prepareCfg($commands) as $cmd) {
             $process = Process::run($cmd);
             if ($process->failed()) {
                 Process::run('/opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end');
@@ -64,6 +65,7 @@ class VyOs
             VyOSConfig::JSON => static::op("{$cmd} json"),
             VyOSConfig::JSON_PRETTY => static::op("{$cmd} json pretty"),
             VyOSConfig::ARRAY => json_decode(static::op("{$cmd} json"), true),
+            VyOSConfig::ARRAY_DOT => Arr::dot(json_decode(static::op("{$cmd} json"), true)),
             VyOSConfig::OBJECT => json_decode(static::op("{$cmd} json")),
             VyOSConfig::LITERAL => literal(json_decode(static::op("{$cmd} json"))),
             VyOSConfig::FLUENT => fluent(json_decode(static::op("{$cmd} json"))),
