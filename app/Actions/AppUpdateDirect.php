@@ -3,10 +3,13 @@
 namespace App\Actions;
 
 use App\Attributes\TaskMethod;
+use App\Services\Helper;
 use Illuminate\Container\Attributes\Config;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 #[TaskMethod(method: 'setParameters', title: 'Set Parameters ', bail: true)]
 #[TaskMethod(method: 'queryRemoteVersion', title: 'Query Remote Version ', bail: true)]
@@ -40,6 +43,8 @@ class AppUpdateDirect extends AbstractAppUpdate
         #[Config('app.update.strategies.direct.version.url')] string $updateVerUrl,
         #[Config('app.update.strategies.direct.version.http.timeout')] int $updateVerHttpTimeout,
         #[Config('app.update.strategies.direct.version.http.headers')] array $updateVerHttpHeaders,
+        bool $force = false,
+        ?OutputInterface $output = null,
     ): void {
         $this->params = get_defined_vars();
         $this->executeTasks();
@@ -76,9 +81,23 @@ class AppUpdateDirect extends AbstractAppUpdate
     {
         $downloadPath = parent::generateDownloadPath();
 
+        $progress = new \App\Prompts\Progress(steps: 0);
+        $progress = Helper::downloadProgress($progress, $this->updateUrl, $downloadPath);
+        $progress->config('set', 'auto.finish', true);
+        $progress->config('set', 'auto.clear', true);
+        $progress->config('set', 'show.finish', 2);
+
         $this->client
             ->throw(fn (Response $response) => $response->status() !== 200)
             ->sink($downloadPath)
+            ->withOptions([
+                'progress' => function ($dlSize, $dlCompleted) use ($progress) {
+                    $progress->progress($dlCompleted);
+                },
+                'on_headers' => function (ResponseInterface $response) use ($progress) {
+                    $progress->total((int) $response->getHeaderLine('Content-Length'));
+                },
+            ])
             ->get($this->updateUrl);
 
         Log::info("Downloaded Update File: {$downloadPath}");

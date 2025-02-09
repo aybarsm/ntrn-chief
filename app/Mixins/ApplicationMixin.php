@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Mixins;
-use Illuminate\Support\Fluent;
 
 /** @mixin \App\Framework\Application */
 class ApplicationMixin

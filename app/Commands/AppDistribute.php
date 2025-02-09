@@ -85,7 +85,7 @@ class AppDistribute extends TaskingCommand
             'spc.remote.archiveFile' => 'string|required_if_accepted:spc.remote.archive',
             'static' => 'array|min:1',
             'static.*.binary' => 'required|string|distinct',
-//            'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
+            //            'static.*.os' => 'required|string|in:darwin,linux,windows|distinct_with:static.*.arch',
             'static.*.os' => 'required|string|in:darwin,linux,windows',
             'static.*.arch' => 'required|string|in:x86_64,aarch64',
             'static.*.local' => 'required|string',
@@ -143,7 +143,7 @@ class AppDistribute extends TaskingCommand
             ],
         ];
 
-        if ($this->option('latest')){
+        if ($this->option('latest')) {
             $this->configables['phar'] = $builds[0];
             $info['build']['file'] = join_paths(dirname($builds[0]), 'build.json');
             if (! File::exists($info['build']['file'])) {
@@ -151,7 +151,7 @@ class AppDistribute extends TaskingCommand
 
                 return false;
             }
-        }else {
+        } else {
             $this->prompts['phar'] = $this->prompt('select',
                 label: 'Select Build to Distribute',
                 options: $builds,
@@ -183,7 +183,7 @@ class AppDistribute extends TaskingCommand
                 return false;
             }
             $this->configables['dist'] = $this->option('dist');
-        }else {
+        } else {
             $this->prompts['dist'] = $this->prompt('multiselect',
                 label: 'Select Binaries to Distribute',
                 options: $dists,

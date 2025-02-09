@@ -2,16 +2,11 @@
 
 namespace App\Providers;
 
-use App\Actions\AppUpdateDirect;
-use App\Actions\AppUpdateGitHubRelease;
-use App\Contracts\Actions\AppUpdateDirectContract;
-use App\Contracts\Actions\AppUpdateGitHubReleaseContract;
 use App\Framework\Component\Finder;
 use App\Traits\Configable;
-use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +36,20 @@ class NtrnServiceProvider extends ServiceProvider
         $this->loadMixins();
         $this->loadViews();
         $this->loadMigrations();
+        Event::listen(function (ScheduledTaskStarting $taskStarting) {
+            Log::info('Scheduled Task Starting', ['command' => $taskStarting->task->command]);
+        });
+        //        Event::listen(function (ScheduledTaskStarting $taskStarting) {
+        //            Context::add('app.scheduled.task.starting', true);
+        //            Context::add('app.scheduled.task.command', $taskStarting->task->command);
+        //        });
+        //        Event::listen('*', function (string $eventName, array $data) {
+        //            $list = Context::get('app.events', []);
+        //            if (! in_array($eventName, $list)) {
+        //                $list[] = $eventName;
+        //                Context::add('app.events', $list);
+        //            }
+        //        });
     }
 
     protected function onBooted(): void
@@ -54,8 +63,7 @@ class NtrnServiceProvider extends ServiceProvider
 
     protected function onTerminating(): void
     {
-        $this->app->terminating(function (...$params): void
-        {
+        $this->app->terminating(function (...$params): void {
             if (! $this->isConfCacheEligible()) {
                 return;
             }
@@ -79,6 +87,7 @@ class NtrnServiceProvider extends ServiceProvider
 
         try {
             Cache::store($store);
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -89,17 +98,16 @@ class NtrnServiceProvider extends ServiceProvider
     {
         $this->app->singleton(
             'conf',
-            function (Application $app): Fluent
-            {
+            function (Application $app): Fluent {
                 if ($this->isConfCacheEligible()) {
                     return unserialize(Cache::store(config('ntrn.conf.cache.store'))
                         ->get(
                             key: config('ntrn.conf.cache.key'),
-                            default: serialize(new Fluent()))
+                            default: serialize(new Fluent))
                     );
                 }
 
-                return new Fluent();
+                return new Fluent;
             }
         );
 
@@ -144,7 +152,7 @@ class NtrnServiceProvider extends ServiceProvider
             ->depth('== 0')
             ->name('*.php');
 
-        foreach($files as $file) {
+        foreach ($files as $file) {
             $key = Str::of($file->getFilenameWithoutExtension())
                 ->trim()
                 ->trim('.')

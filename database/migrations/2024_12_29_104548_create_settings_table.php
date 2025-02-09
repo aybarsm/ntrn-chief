@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
@@ -10,9 +11,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('settings', function (Blueprint $table) {
-            $table->mediumText('key')->primary()->unique('settings_un0');
+            $table->mediumText('key')
+                ->primary()
+                ->unique('settings_un0');
             $table->longText('value');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+            //            $table->set('created_at')->default('CURRENT_TIMESTAMP');
         });
     }
 

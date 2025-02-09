@@ -11,8 +11,7 @@ class Mapper
         protected string $key = '',
         protected string $value = '',
         protected string $returnSrc = '',
-    )
-    {
+    ) {
         //
     }
 
@@ -20,6 +19,4 @@ class Mapper
     {
         return new static($return, $key, $value, $returnSource);
     }
-
-    public function result
 }

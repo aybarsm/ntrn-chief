@@ -2,14 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Services\Helper;
-
 return [
     'conf' => [
         'cache' => [
             'key' => env('NTRN_CONF_CACHE_KEY', 'app'),
             'store' => env('NTRN_CONF_CACHE_STORE', ''),
-        ]
+        ],
     ],
     'configs' => env('NTRN_CONFIGS', ''),
     'views' => env('NTRN_VIEWS', ''),

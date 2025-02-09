@@ -45,8 +45,12 @@
         "swoole/ide-helper": "@dev"
     },
     "autoload": {
+        "exclude-from-classmap": [
+            "vendor/illuminate/console/Application.php"
+        ],
         "psr-4": {
             "App\\": "app/",
+            "Illuminate\\": "app/Overrides/Illuminate",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         },

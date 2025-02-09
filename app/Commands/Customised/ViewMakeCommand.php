@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Commands\Customised;
+
 use Illuminate\Foundation\Console\ViewMakeCommand as BaseViewMakeCommand;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -16,6 +17,7 @@ class ViewMakeCommand extends BaseViewMakeCommand
 
         return $this->viewPath($path);
     }
+
     protected function getOptions(): array
     {
         $options = parent::getOptions();

@@ -6,12 +6,10 @@ namespace App\Commands\Ros;
 
 use App\Framework\Commands\Command;
 
-class Stage extends Command
+class Image extends Command
 {
-    protected $signature = 'ros:stage
-    {stage : The stage to run}';
-
-    protected $description = 'Run a VyOS stage';
+    protected $signature = 'ros:image';
+    protected $description = 'Command description';
 
     public function handle()
     {

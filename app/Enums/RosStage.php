@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum VyOSStage: string
+enum RosStage: string
 {
     case PRE_HOOK = 'pre_hook';
 }

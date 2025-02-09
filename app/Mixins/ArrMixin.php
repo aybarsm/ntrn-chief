@@ -51,4 +51,28 @@ class ArrMixin
             return false;
         };
     }
+
+    public static function contains(): \Closure
+    {
+        return function (array $array, mixed $items, bool $all = true): bool {
+            $items = static::wrap($items);
+            $intersection = array_intersect($array, $items);
+
+            return $all ? count($intersection) === count($items) : count($intersection) > 0;
+        };
+    }
+
+    public static function containsAll(): \Closure
+    {
+        return function (array $array, mixed $items): bool {
+            return static::contains($array, $items);
+        };
+    }
+
+    public static function containsAny(): \Closure
+    {
+        return function (array $array, mixed $items): bool {
+            return static::contains($array, $items, false);
+        };
+    }
 }

@@ -52,7 +52,6 @@ class AppBuild extends TaskingCommand
 
         $prompts = [];
 
-
         if (! $this->option('no-pint')) {
             $pint = join_paths(base_path(), 'vendor', 'bin', 'pint');
             if (File::exists($pint)) {
@@ -76,7 +75,7 @@ class AppBuild extends TaskingCommand
         if (! $this->option('no-git')) {
             $result = $process->run('git rev-parse --is-inside-work-tree');
 
-            if (!$result->successful() || Str::firstLine($result->output()) != 'true') {
+            if (! $result->successful() || Str::firstLine($result->output()) != 'true') {
                 $this->setTaskMessage('<error>Failed to check repository status.</error>');
 
                 return false;
@@ -88,7 +87,7 @@ class AppBuild extends TaskingCommand
 
             $result = $process->run('git symbolic-ref --short HEAD');
 
-            if (!$result->successful()) {
+            if (! $result->successful()) {
                 $this->setTaskMessage('<error>Failed to retrieve branch name.</error>');
 
                 return false;
@@ -100,7 +99,7 @@ class AppBuild extends TaskingCommand
 
             $result = $process->run('git status --porcelain');
 
-            if (!blank(trim($result->output()))) {
+            if (! blank(trim($result->output()))) {
                 $hint = "Branch: {$branch}";
                 $prompts['commit'] = $this->prompt('confirm',
                     label: 'Repository is not clean. Would you like to commit changes?',
@@ -119,7 +118,7 @@ class AppBuild extends TaskingCommand
 
                     $message = $prompts['message']->prompt();
                     $table[] = ['Commit Message', $message];
-                    $commands[] = 'git commit ' . (blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
+                    $commands[] = 'git commit '.(blank($message) ? '--allow-empty-message' : "-m \"{$message}\"");
 
                     $currentTag = app('git.version');
                     $table[] = ['Current Tag', $currentTag];
@@ -140,7 +139,7 @@ class AppBuild extends TaskingCommand
                             2 => 'Minor',
                             3 => 'Major',
                         ],
-                        transform: fn($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
+                        transform: fn ($selected) => $selected >= 1 ? Helper::appNextVer($selected, ($currentTag == 'unreleased' ? $unreleased : $currentTag)) : $selected,
                     );
 
                     $tag = $prompts['tag']->prompt();
@@ -160,7 +159,7 @@ class AppBuild extends TaskingCommand
                     if ($push) {
 
                         $result = $process->run('git remote show');
-                        if (!$result->successful()) {
+                        if (! $result->successful()) {
                             $this->setTaskMessage('<error>Failed to retrieve remote repositories.</error>');
 
                             return false;
@@ -172,7 +171,7 @@ class AppBuild extends TaskingCommand
 
                             return false;
                         }
-                        $table[] = ['Available Remotes (' . $availableRemotes->count() . ')', Arr::join($availableRemotes->toArray(), ', ')];
+                        $table[] = ['Available Remotes ('.$availableRemotes->count().')', Arr::join($availableRemotes->toArray(), ', ')];
 
                         if ($availableRemotes->count() > 1) {
                             $prompts['remotes'] = $this->prompt('multiselect',
@@ -187,7 +186,7 @@ class AppBuild extends TaskingCommand
                             $remotes = $availableRemotes->toArray();
                         }
 
-                        $table[] = ['Push Remotes (' . count($remotes) . ')', Arr::join($remotes, ', ')];
+                        $table[] = ['Push Remotes ('.count($remotes).')', Arr::join($remotes, ', ')];
                         foreach ($remotes as $remote) {
                             $commands[] = "git push {$remote} {$branch}";
                             if ($tag !== null) {
@@ -217,7 +216,7 @@ class AppBuild extends TaskingCommand
                     if ($continue) {
                         foreach ($commands as $command) {
                             $result = $process->run($command);
-                            if (!$result->successful()) {
+                            if (! $result->successful()) {
                                 $this->setTaskMessage("<error>Failed to execute command: {$command}</error>");
 
                                 return false;
@@ -227,14 +226,14 @@ class AppBuild extends TaskingCommand
                         }
                     }
 
-                    if (!$continue) {
+                    if (! $continue) {
                         $this->output->writeln('<comment>Git actions cancelled.</comment>');
 
                         $continueBuild = $this->prompt('confirm',
                             label: 'Continue with build process?'
                         )->prompt();
 
-                        if (!$continueBuild) {
+                        if (! $continueBuild) {
                             $this->setTaskMessage('<error>Build process cancelled.</error>');
 
                             return false;
@@ -244,6 +243,7 @@ class AppBuild extends TaskingCommand
                 }
             }
         }
+
         return true;
     }
 

@@ -3,11 +3,16 @@
 namespace App\Traits\Services\Helper;
 
 use Illuminate\Support\Str;
-use Symfony\Component\Process\Process;
 
 trait App
 {
     protected static array $buildInfo;
+
+    public static function appHasPosix(): bool
+    {
+        return function_exists('posix_getuid') && function_exists('posix_getgid') && function_exists('posix_setuid') && function_exists('posix_setgid') && function_exists('posix_getpwnam') && function_exists('posix_getgrnam');
+        //        return extension_loaded('posix') && (ini_get('enable_posix') === '1' || php_sapi_name() === 'cli');
+    }
 
     protected static function appCommandsAdd(): array
     {
@@ -18,6 +23,9 @@ trait App
             \Illuminate\Console\Scheduling\ScheduleFinishCommand::class,
             \Illuminate\Console\Scheduling\ScheduleWorkCommand::class,
             \Symfony\Component\Console\Command\DumpCompletionCommand::class,
+
+            //            FIX: class_implements(): Class Illuminate\Auth\Listeners\SendEmailVerificationNotification does not exist and could not be loaded
+            //            \Illuminate\Foundation\Console\EventListCommand::class,
         ];
 
         if (static::isPhar()) {
@@ -136,24 +144,8 @@ trait App
         return data_get(static::$buildInfo, $key, $default);
     }
 
-    public static function appIsVyOS(): bool
+    public static function appIsRos(): bool
     {
-        if (PHP_OS_FAMILY !== 'Linux') {
-            return false;
-        }
-
-        $process = Process::fromShellCommandline(
-            'uname -r',
-        );
-        if (! $process->isSuccessful()) {
-            return false;
-        }
-
-        $kernel = trim($process->getOutput());
-        if (! Str::endsWith($kernel, '-vyos')) {
-            return false;
-        }
-
-        return true;
+        return PHP_OS_FAMILY === 'Linux' && Str::endsWith(trim(php_uname('r')), '-vyos');
     }
 }

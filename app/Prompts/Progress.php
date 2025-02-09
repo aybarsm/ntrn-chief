@@ -251,9 +251,9 @@ class Progress extends Prompt implements ProgressContract
     //    public function clear(): void
     //    {
     //        $this->eraseRenderedLines();
-    ////        $this->cursor->restorePosition();
-    ////        $this->cursor->clearOutput();
-    ////        $this->cursor = null;
+    // //        $this->cursor->restorePosition();
+    // //        $this->cursor->clearOutput();
+    // //        $this->cursor = null;
     //    }
     //    protected function eraseRenderedLines(): void
     //    {

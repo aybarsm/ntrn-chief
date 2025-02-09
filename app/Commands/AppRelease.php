@@ -19,8 +19,8 @@ use Ramsey\Collection\Sort;
 use function Illuminate\Filesystem\join_paths;
 
 #[CommandTask('setParameters', null, 'Set Parameters', true)]
-//#[CommandTask('selectOptions', null, 'Select Options to Release', true)]
-//#[CommandTask('uploadAssets', null, 'Upload Changed Assets')]
+// #[CommandTask('selectOptions', null, 'Select Options to Release', true)]
+// #[CommandTask('uploadAssets', null, 'Upload Changed Assets')]
 class AppRelease extends TaskingCommand
 {
     use Configable;

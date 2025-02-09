@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Output\OutputInterface;
 
 use function Illuminate\Filesystem\join_paths;
 
@@ -39,6 +40,10 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
     protected PendingRequest $client;
 
+    protected bool $force = false;
+
+    protected ?OutputInterface $output = null;
+
     abstract protected function downloadUpdateAsset(): void;
 
     protected function standardiseVersions(): void
@@ -62,15 +67,11 @@ abstract class AbstractAppUpdate extends TaskingMethod
             default => version_compare($this->stdAppVer, $this->stdUpdateVer, '!='),
         };
 
-        $this->taskStopExecution = ! $this->updateRequired;
+        $this->taskStopExecution = ! $this->force && ! $this->updateRequired;
     }
 
     protected function setParameters(): void
     {
-        if (Context::has('debugAppUpdateAssumeVer')) {
-            $this->params['appVer'] = Context::get('debugAppUpdateAssumeVer');
-        }
-
         foreach ($this->params as $key => $value) {
             $this->{$key} = $value;
         }
@@ -119,8 +120,6 @@ abstract class AbstractAppUpdate extends TaskingMethod
 
     protected function handleAfter(): void
     {
-        Log::info('Handle after called');
-
         if (isset($this->updateRequired)) {
             Context::add('appUpdateRequired', $this->updateRequired);
         }

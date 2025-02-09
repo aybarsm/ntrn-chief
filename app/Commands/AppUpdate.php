@@ -12,13 +12,12 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-//TODO: Force update
 class AppUpdate extends Command
 {
     protected $signature = 'app:update
-    {--assume-ver= : Assume the current version}
     {--no-cleanup : Do not cleanup temporary files}
-    {--no-apply : Do not apply the update}';
+    {--no-apply : Do not apply the update}
+    {--f|force : Force update}';
 
     protected $description = 'Update the application';
 
@@ -32,27 +31,35 @@ class AppUpdate extends Command
 
     protected bool $initalised = false;
 
+    protected bool $force = false;
+
     public function handle(
         #[Config('app.update.strategy')] string $strategy,
         #[Config('app.update.auto')] bool $auto,
     ): void {
+        if (! $this->app->isPhar()) {
+            $this->error('This command can only be run on a built application.');
+
+            return;
+        }
         $this->auto = $auto;
         if (! $this->auto) {
+            $this->warn('App auto update is disabled');
             Log::warning('App auto update is disabled');
 
             return;
         }
 
-        if ($this->option('assume-ver') !== null) {
-            Context::add('debugAppUpdateAssumeVer', $this->option('assume-ver'));
-        }
+        $params = [
+            'force' => $this->option('force') === true,
+        ];
 
         $this->strategy = Str::upper($strategy);
 
         if ($this->strategy == 'GITHUB_RELEASE') {
-            $this->app->call(AppUpdateGitHubRelease::class);
+            $this->app->call(AppUpdateGitHubRelease::class, $params);
         } elseif ($this->strategy == 'DIRECT') {
-            $this->app->call(AppUpdateDirect::class);
+            $this->app->call(AppUpdateDirect::class, $params);
         } else {
             Log::error("Invalid update strategy [{$strategy}]");
 
@@ -65,7 +72,7 @@ class AppUpdate extends Command
             return;
         }
 
-        if (! Context::get('appUpdateRequired')) {
+        if ($this->option('force') !== true && ! Context::get('appUpdateRequired')) {
             Log::info('No update required');
 
             return;

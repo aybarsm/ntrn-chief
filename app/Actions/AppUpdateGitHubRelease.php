@@ -8,6 +8,7 @@ use Illuminate\Container\Attributes\Config;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Console\Output\OutputInterface;
 
 #[TaskMethod(method: 'setParameters', title: 'Set Parameters', bail: true)]
 #[TaskMethod(method: 'setRelease', title: 'Set Relevant GitHub Release', bail: true)]
@@ -28,6 +29,8 @@ class AppUpdateGitHubRelease extends AbstractAppUpdate
         #[Config('app.version_pattern')] string $appVerPattern,
         #[Config('app.update.version.target')] string $updateTo,
         #[Config('app.update.version.pattern')] string $updateVerPattern,
+        bool $force = false,
+        ?OutputInterface $output = null,
     ): void {
         $this->params = get_defined_vars();
         $this->executeTasks();

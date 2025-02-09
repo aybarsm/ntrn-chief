@@ -13,5 +13,6 @@ class DatabaseSeeder extends Seeder
         DB::table('settings')->insert([
             'settings' => serialize(fluent([])),
         ]);
+
     }
 }

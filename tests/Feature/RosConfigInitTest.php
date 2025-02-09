@@ -2,5 +2,5 @@
 
 it('Initaite ', function () {
     $this->artisan('inspire')
-         ->assertExitCode(0);
+        ->assertExitCode(0);
 });

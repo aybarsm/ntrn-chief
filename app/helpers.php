@@ -52,6 +52,7 @@ if (! function_exists('truthy')) {
     function truthy(mixed $value): bool
     {
         $value = is_string($value) ? strtolower($value) : $value;
+
         return in_array($value, ['yes', 'on', '1', 1, true, 'true'], true);
     }
 }
@@ -60,6 +61,7 @@ if (! function_exists('falsy')) {
     function falsy(mixed $value): bool
     {
         $value = is_string($value) ? strtolower($value) : $value;
+
         return in_array($value, ['no', 'off', '0', 0, false, 'false'], true);
     }
 }
@@ -68,6 +70,21 @@ if (! function_exists('isSerialized')) {
     function isSerialized(string $str): bool
     {
         $data = @unserialize($str);
+
         return $str === 'b:0;' || $data !== false;
+    }
+}
+
+if (! function_exists('env_or_cfg')) {
+    function env_or_cfg(string $key, mixed $default = null): mixed
+    {
+        return getenv($key) !== false ? getenv($key) : (get_cfg_var($key) !== false ? get_cfg_var($key) : $default);
+    }
+}
+
+if (! function_exists('get_constant')) {
+    function get_constant(string $key, mixed $default = null): mixed
+    {
+        return defined($key) ? constant($key) : $default;
     }
 }

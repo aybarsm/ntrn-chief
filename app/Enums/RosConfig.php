@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum VyOSConfig: string
+enum RosConfig: string
 {
     case NATIVE = 'native';
     case COMMANDS = 'commands';

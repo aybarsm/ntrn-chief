@@ -41,7 +41,7 @@ return Helper::isPhar() ? [] : [
             'args' => [
                 'debug',
                 'no-interaction',
-                '--with-ini-set="phar.readonly=Off"'
+                '--with-ini-set="phar.readonly=Off"',
             ],
             'chmod' => '0755',
             'remote' => [
@@ -92,7 +92,10 @@ return Helper::isPhar() ? [] : [
                     'archive' => true,
                     'archiveFile' => 'micro.sfx',
                 ],
-                'sanityCheck' => '{{BINARY}} list',
+                'args' => [
+                    '--with-ini-file='.resource_path('ini/ntrn_darwin-aarch64/99-ntrn.ini'),
+                ],
+                //                'sanityCheck' => '{{BINARY}} list',
             ],
             [
                 'binary' => 'ntrn_darwin-x86_64',
@@ -120,7 +123,7 @@ return Helper::isPhar() ? [] : [
                     'archiveFile' => 'micro.sfx',
                 ],
                 'args' => [
-                    '--with-ini-file=' . resource_path('ini/ntrn_ros/99-ntrn.ini'),
+                    '--with-ini-file='.resource_path('ini/ntrn_ros/99-ntrn.ini'),
                 ],
             ],
         ],

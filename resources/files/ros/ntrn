@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+NTRN_BIN=${NTRN_BIN:-'/opt/vyatta/etc/config/scripts/ntrn'}
+
+if [ ! -f "$NTRN_BIN" ] ; then
+    echo "NTRN binary not found at $NTRN_BIN"
+    exit 1
+fi
+
+NTRN_CMD="$NTRN_BIN $@"
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "$NTRN_CMD"
+else
+    ${NTRN_CMD}
+fi
