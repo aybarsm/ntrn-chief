@@ -22,12 +22,12 @@ class Image extends Command
             '/etc/apt/sources.list.d/debian.sources'
         ];
 
-        array_merge($copy['exact'], $this->splIteratorToArray(Finder::create()
+        $copy['exact'] = array_merge($copy['exact'], $this->splIteratorToArray(Finder::create()
             ->in('/usr/share/keyrings')
             ->notName('-buster-')
             ->notName('-bullseye-')));
 
-        array_merge($copy['exact'], $this->splIteratorToArray(Finder::create()
+        $copy['exact'] = array_merge($copy['exact'], $this->splIteratorToArray(Finder::create()
             ->in('/etc/apt/trusted.gpg.d')
             ->notName('-buster-')
             ->notName('-bullseye-')));
