@@ -33,10 +33,11 @@ class Image extends Command
             ->notName('-bullseye-')));
 
         dump($copy['exact']);
+        print_r($copy['exact']);
     }
 
     protected function splIteratorToArray($finder)
     {
-        return Arr::map(iterator_to_array($finder), fn (SplFileInfo $file) => $file->getRealPath());
+        return array_values(Arr::map(iterator_to_array($finder), fn (SplFileInfo $file) => $file->getRealPath()));
     }
 }
